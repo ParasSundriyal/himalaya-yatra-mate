@@ -1,21 +1,47 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Mountain, Menu, X } from "lucide-react";
+import { Mountain, Menu, X, LogOut, User } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Navbar = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, logout, isAuthenticated } = useAuth();
 
-  const navItems = [
+  const publicNavItems = [
     { name: "Home", path: "/" },
     { name: "AI Vehicle Detection", path: "/ai-detection" },
     { name: "Parking Booking", path: "/parking" },
-    { name: "Tourist Dashboard", path: "/dashboard" },
-    { name: "Group Portal", path: "/group-portal" },
-    { name: "Admin", path: "/admin" },
   ];
 
+  const userNavItems = [
+    { name: "My Dashboard", path: "/dashboard" },
+  ];
+
+  const groupNavItems = [
+    { name: "Group Portal", path: "/group-portal" },
+  ];
+
+  const adminNavItems = [
+    { name: "Admin Dashboard", path: "/admin" },
+  ];
+
+  const getNavItems = () => {
+    let items = [...publicNavItems];
+    if (isAuthenticated && user) {
+      if (user.role === "user") {
+        items = [...items, ...userNavItems];
+      } else if (user.role === "group") {
+        items = [...items, ...groupNavItems];
+      } else if (user.role === "admin") {
+        items = [...items, ...adminNavItems];
+      }
+    }
+    return items;
+  };
+
+  const navItems = getNavItems();
   const isActive = (path: string) => location.pathname === path;
 
   return (
@@ -33,7 +59,7 @@ const Navbar = () => {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-2">
             {navItems.map((item) => (
               <Link key={item.path} to={item.path}>
                 <Button
@@ -45,6 +71,31 @@ const Navbar = () => {
                 </Button>
               </Link>
             ))}
+            
+            {isAuthenticated ? (
+              <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-lg">
+                  <User className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">{user?.name}</span>
+                  <span className="text-xs text-muted-foreground">({user?.role})</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={logout}
+                  className="gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </Button>
+              </div>
+            ) : (
+              <Link to="/login">
+                <Button size="sm" className="ml-2">
+                  Login
+                </Button>
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -78,6 +129,35 @@ const Navbar = () => {
                   </Button>
                 </Link>
               ))}
+              
+              {isAuthenticated ? (
+                <>
+                  <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg mt-2">
+                    <User className="h-4 w-4 text-primary" />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">{user?.name}</div>
+                      <div className="text-xs text-muted-foreground">{user?.role}</div>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      logout();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full justify-start gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
+                  <Button className="w-full mt-2">
+                    Login
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         )}
