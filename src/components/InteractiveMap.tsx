@@ -190,16 +190,27 @@ const InteractiveMap = () => {
         {charDhams.map((dham, index) => (
           <Marker key={`dham-${index}`} position={[dham.lat, dham.lon]}>
             <Popup>
-              <div className="p-2">
-                <h3 className="font-bold text-lg mb-2">{dham.name}</h3>
-                <p className="text-sm text-muted-foreground">Sacred Char Dham Site</p>
-                <Button 
-                  size="sm" 
-                  className="mt-2 w-full"
-                  onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${dham.lat},${dham.lon}`, '_blank')}
+              <div style={{ padding: '8px' }}>
+                <h3 style={{ fontWeight: 'bold', fontSize: '18px', marginBottom: '8px' }}>{dham.name}</h3>
+                <p style={{ fontSize: '14px', marginBottom: '8px' }}>Sacred Char Dham Site</p>
+                <a 
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${dham.lat},${dham.lon}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-block',
+                    padding: '8px 16px',
+                    backgroundColor: '#8B5CF6',
+                    color: 'white',
+                    borderRadius: '6px',
+                    textDecoration: 'none',
+                    fontSize: '14px',
+                    textAlign: 'center',
+                    width: '100%'
+                  }}
                 >
                   Get Directions
-                </Button>
+                </a>
               </div>
             </Popup>
           </Marker>
@@ -222,39 +233,41 @@ const InteractiveMap = () => {
             position={[hotel.lat, hotel.lon]}
           >
             <Popup>
-              <div className="p-2 min-w-[200px]">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-bold text-base flex items-center gap-1">
-                    <HotelIcon className="h-4 w-4 text-purple-500" />
-                    {hotel.name}
-                  </h3>
-                  <Badge variant={hotel.available ? "secondary" : "destructive"} className="ml-2">
+              <div style={{ padding: '8px', minWidth: '200px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <h3 style={{ fontWeight: 'bold', fontSize: '16px' }}>🏨 {hotel.name}</h3>
+                  <span style={{
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    backgroundColor: hotel.available ? '#10B981' : '#EF4444',
+                    color: 'white'
+                  }}>
                     {hotel.available ? "Available" : "Booked"}
-                  </Badge>
+                  </span>
                 </div>
-                <div className="flex items-center text-sm text-muted-foreground mb-2">
-                  <MapPin className="h-3 w-3 mr-1" />
-                  {hotel.location}
-                </div>
-                <div className="flex items-center mb-2">
-                  <Star className="h-4 w-4 fill-primary text-primary mr-1" />
-                  <span className="font-semibold text-sm">{hotel.rating}</span>
-                </div>
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {hotel.amenities.map((amenity, i) => (
-                    <Badge key={i} variant="outline" className="text-xs">{amenity}</Badge>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center text-base font-bold">
-                    <IndianRupee className="h-4 w-4 mr-1" />
-                    {hotel.price}
-                    <span className="text-xs text-muted-foreground font-normal ml-1">/night</span>
-                  </div>
-                </div>
-                <Button size="sm" className="mt-2 w-full" disabled={!hotel.available}>
-                  {hotel.available ? "Book Now" : "Fully Booked"}
-                </Button>
+                <p style={{ fontSize: '14px', marginBottom: '4px' }}>📍 {hotel.location}</p>
+                <p style={{ fontSize: '14px', marginBottom: '8px' }}>⭐ {hotel.rating}</p>
+                <p style={{ fontSize: '12px', marginBottom: '8px' }}>
+                  {hotel.amenities.join(' • ')}
+                </p>
+                <p style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>
+                  ₹{hotel.price} <span style={{ fontSize: '12px', fontWeight: 'normal' }}>/night</span>
+                </p>
+                {hotel.available && (
+                  <button style={{
+                    width: '100%',
+                    padding: '8px',
+                    backgroundColor: '#8B5CF6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    cursor: 'pointer'
+                  }}>
+                    Book Now
+                  </button>
+                )}
               </div>
             </Popup>
           </Marker>
@@ -267,35 +280,37 @@ const InteractiveMap = () => {
             position={[taxi.lat, taxi.lon]}
           >
             <Popup>
-              <div className="p-2 min-w-[180px]">
-                <h3 className="font-bold text-base mb-1 flex items-center gap-1">
-                  <Car className="h-4 w-4 text-green-500" />
-                  {taxi.driver}
+              <div style={{ padding: '8px', minWidth: '180px' }}>
+                <h3 style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '4px' }}>
+                  🚗 {taxi.driver}
                 </h3>
-                <p className="text-sm text-muted-foreground mb-3">{taxi.vehicle}</p>
-                <div className="space-y-1 mb-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Seats</span>
-                    <span className="font-semibold">{taxi.seats}</span>
+                <p style={{ fontSize: '14px', marginBottom: '12px' }}>{taxi.vehicle}</p>
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '4px' }}>
+                    <span>Seats</span>
+                    <span style={{ fontWeight: 'bold' }}>{taxi.seats}</span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Rating</span>
-                    <div className="flex items-center">
-                      <Star className="h-3 w-3 fill-primary text-primary mr-1" />
-                      <span className="font-semibold">{taxi.rating}</span>
-                    </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '4px' }}>
+                    <span>Rating</span>
+                    <span style={{ fontWeight: 'bold' }}>⭐ {taxi.rating}</span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Rate</span>
-                    <span className="font-semibold">₹{taxi.rate}/km</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                    <span>Rate</span>
+                    <span style={{ fontWeight: 'bold' }}>₹{taxi.rate}/km</span>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button size="sm" className="flex-1">Book</Button>
-                  <Button size="sm" variant="outline">
-                    <Phone className="h-3 w-3" />
-                  </Button>
-                </div>
+                <button style={{
+                  width: '100%',
+                  padding: '8px',
+                  backgroundColor: '#10B981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  cursor: 'pointer'
+                }}>
+                  Book Ride
+                </button>
               </div>
             </Popup>
           </Marker>
@@ -314,9 +329,9 @@ const InteractiveMap = () => {
             }}
           >
             <Popup>
-              <div className="p-2">
-                <h4 className="font-bold">{route.name}</h4>
-                <p className="text-sm text-muted-foreground">Pilgrimage Route</p>
+              <div style={{ padding: '8px' }}>
+                <h4 style={{ fontWeight: 'bold', marginBottom: '4px' }}>{route.name}</h4>
+                <p style={{ fontSize: '14px' }}>Pilgrimage Route</p>
               </div>
             </Popup>
           </Polyline>
