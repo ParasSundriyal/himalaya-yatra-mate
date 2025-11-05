@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import InteractiveMap from "@/components/InteractiveMap";
+import SimpleMap from "@/components/SimpleMap";
 import { 
   Hotel, 
   Car, 
@@ -286,7 +286,7 @@ const Dashboard = () => {
                   Click on markers for more details and booking options.
                 </p>
               </div>
-              <InteractiveMap />
+              <SimpleMap />
               <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded-full bg-red-500"></div>
