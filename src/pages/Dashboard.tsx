@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import InteractiveMap from "@/components/InteractiveMap";
 import { 
   Hotel, 
   Car, 
@@ -15,7 +16,8 @@ import {
   Thermometer,
   Wind,
   Droplets,
-  Eye
+  Eye,
+  Map
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -254,8 +256,12 @@ const Dashboard = () => {
         )}
 
         {/* Main Tabs */}
-        <Tabs defaultValue="hotels" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="map" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="map">
+              <Map className="h-4 w-4 mr-2" />
+              Map View
+            </TabsTrigger>
             <TabsTrigger value="hotels">
               <Hotel className="h-4 w-4 mr-2" />
               Hotels
@@ -269,6 +275,34 @@ const Dashboard = () => {
               Routes
             </TabsTrigger>
           </TabsList>
+
+          {/* Interactive Map Tab */}
+          <TabsContent value="map" className="space-y-4">
+            <Card className="p-6">
+              <div className="mb-4">
+                <h2 className="text-2xl font-bold mb-2">Interactive Char Dham Map</h2>
+                <p className="text-muted-foreground">
+                  Explore hotels, taxis, and pilgrimage routes across the Char Dham region. 
+                  Click on markers for more details and booking options.
+                </p>
+              </div>
+              <InteractiveMap />
+              <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                  <span>Char Dham Sites</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-purple-500"></div>
+                  <span>Hotels</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                  <span>Taxis</span>
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
 
           {/* Hotels Tab */}
           <TabsContent value="hotels" className="space-y-4">
