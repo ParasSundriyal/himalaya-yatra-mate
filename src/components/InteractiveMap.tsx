@@ -186,31 +186,33 @@ const InteractiveMap = () => {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
 
-        {/* Char Dham Markers with Circles */}
+        {/* Char Dham Markers */}
         {charDhams.map((dham, index) => (
-          <div key={`dham-${index}`}>
-            <Marker position={[dham.lat, dham.lon]}>
-              <Popup>
-                <div className="p-2">
-                  <h3 className="font-bold text-lg mb-2">{dham.name}</h3>
-                  <p className="text-sm text-muted-foreground">Sacred Char Dham Site</p>
-                  <Button 
-                    size="sm" 
-                    className="mt-2 w-full"
-                    onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${dham.lat},${dham.lon}`, '_blank')}
-                  >
-                    Get Directions
-                  </Button>
-                </div>
-              </Popup>
-            </Marker>
-            {/* @ts-ignore - Circle props type mismatch */}
-            <Circle 
-              center={[dham.lat, dham.lon]}
-              radius={5000}
-              pathOptions={{ color: dham.color, fillColor: dham.color, fillOpacity: 0.1 }}
-            />
-          </div>
+          <Marker key={`dham-${index}`} position={[dham.lat, dham.lon]}>
+            <Popup>
+              <div className="p-2">
+                <h3 className="font-bold text-lg mb-2">{dham.name}</h3>
+                <p className="text-sm text-muted-foreground">Sacred Char Dham Site</p>
+                <Button 
+                  size="sm" 
+                  className="mt-2 w-full"
+                  onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${dham.lat},${dham.lon}`, '_blank')}
+                >
+                  Get Directions
+                </Button>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
+        {/* Char Dham Circles */}
+        {charDhams.map((dham, index) => (
+          <Circle 
+            key={`circle-${index}`}
+            center={[dham.lat, dham.lon]}
+            radius={5000}
+            pathOptions={{ color: dham.color, fillColor: dham.color, fillOpacity: 0.1 }}
+          />
         ))}
 
         {/* Hotel Markers */}
