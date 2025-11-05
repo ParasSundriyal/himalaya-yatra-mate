@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { 
   Hotel, 
   Car, 
@@ -12,10 +13,71 @@ import {
   IndianRupee,
   Cloud,
   Thermometer,
-  Wind
+  Wind,
+  Droplets,
+  Eye
 } from "lucide-react";
+import { useState, useEffect } from "react";
+
+interface WeatherData {
+  location: string;
+  temp: number;
+  condition: string;
+  humidity: number;
+  windSpeed: number;
+  visibility: number;
+  icon: string;
+}
 
 const Dashboard = () => {
+  const [weatherData, setWeatherData] = useState<WeatherData[]>([]);
+  const [apiKey, setApiKey] = useState(localStorage.getItem('weatherApiKey') || '');
+  const [loading, setLoading] = useState(false);
+
+  const charDhams = [
+    { name: 'Badrinath', lat: 30.7433, lon: 79.4938 },
+    { name: 'Kedarnath', lat: 30.7346, lon: 79.0669 },
+    { name: 'Gangotri', lat: 30.9996, lon: 78.9408 },
+    { name: 'Yamunotri', lat: 31.0118, lon: 78.4270 }
+  ];
+
+  useEffect(() => {
+    if (apiKey) {
+      fetchWeatherData();
+    }
+  }, [apiKey]);
+
+  const fetchWeatherData = async () => {
+    setLoading(true);
+    try {
+      const weatherPromises = charDhams.map(async (dham) => {
+        const response = await fetch(
+          `https://api.openweathermap.org/data/2.5/weather?lat=${dham.lat}&lon=${dham.lon}&appid=${apiKey}&units=metric`
+        );
+        const data = await response.json();
+        return {
+          location: dham.name,
+          temp: Math.round(data.main?.temp || 0),
+          condition: data.weather?.[0]?.description || 'N/A',
+          humidity: data.main?.humidity || 0,
+          windSpeed: Math.round((data.wind?.speed || 0) * 3.6), // Convert m/s to km/h
+          visibility: Math.round((data.visibility || 0) / 1000), // Convert to km
+          icon: data.weather?.[0]?.icon || '01d'
+        };
+      });
+      const results = await Promise.all(weatherPromises);
+      setWeatherData(results);
+    } catch (error) {
+      console.error('Error fetching weather:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApiKeySubmit = () => {
+    localStorage.setItem('weatherApiKey', apiKey);
+    fetchWeatherData();
+  };
   const hotels = [
     { 
       name: "Divine Heights Hotel", 
@@ -83,25 +145,29 @@ const Dashboard = () => {
       name: "Badrinath Circuit",
       distance: "295 km from Rishikesh",
       duration: "10-12 hours",
-      difficulty: "Moderate"
+      difficulty: "Moderate",
+      mapsUrl: "https://www.google.com/maps/dir/?api=1&destination=30.7433,79.4938&travelmode=driving"
     },
     {
       name: "Kedarnath Trek",
       distance: "16 km trek from Gaurikund",
       duration: "6-8 hours",
-      difficulty: "Challenging"
+      difficulty: "Challenging",
+      mapsUrl: "https://www.google.com/maps/dir/?api=1&destination=30.7346,79.0669&travelmode=driving"
     },
     {
       name: "Gangotri Route",
       distance: "250 km from Rishikesh",
       duration: "8-10 hours",
-      difficulty: "Moderate"
+      difficulty: "Moderate",
+      mapsUrl: "https://www.google.com/maps/dir/?api=1&destination=30.9996,78.9408&travelmode=driving"
     },
     {
       name: "Yamunotri Path",
       distance: "6 km trek from Janki Chatti",
       duration: "4-5 hours",
-      difficulty: "Moderate"
+      difficulty: "Moderate",
+      mapsUrl: "https://www.google.com/maps/dir/?api=1&destination=31.0118,78.4270&travelmode=driving"
     },
   ];
 
@@ -116,31 +182,76 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Weather Widget */}
-        <Card className="p-6 mb-6 bg-gradient-to-br from-primary/10 to-secondary/10">
-          <div className="grid md:grid-cols-4 gap-6">
-            <div className="text-center">
-              <Cloud className="h-8 w-8 mx-auto mb-2 text-primary" />
-              <div className="text-2xl font-bold">Badrinath</div>
-              <div className="text-muted-foreground">Partly Cloudy</div>
+        {/* Weather API Key Input */}
+        {!apiKey && (
+          <Card className="p-6 mb-6 bg-secondary/5 border-secondary/20">
+            <h3 className="font-semibold mb-3">Weather API Setup</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Enter your OpenWeatherMap API key to view live weather data for all Char Dhams.
+              Get a free API key at <a href="https://openweathermap.org/api" target="_blank" rel="noopener noreferrer" className="text-primary underline">openweathermap.org</a>
+            </p>
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                placeholder="Enter your OpenWeatherMap API key"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                className="flex-1"
+              />
+              <Button onClick={handleApiKeySubmit}>Save</Button>
             </div>
-            <div className="text-center">
-              <Thermometer className="h-8 w-8 mx-auto mb-2 text-secondary" />
-              <div className="text-2xl font-bold">15°C</div>
-              <div className="text-muted-foreground">Temperature</div>
-            </div>
-            <div className="text-center">
-              <Wind className="h-8 w-8 mx-auto mb-2 text-primary" />
-              <div className="text-2xl font-bold">12 km/h</div>
-              <div className="text-muted-foreground">Wind Speed</div>
-            </div>
-            <div className="text-center flex items-center justify-center">
-              <Badge variant="secondary" className="text-sm">
-                Good weather for travel
-              </Badge>
+          </Card>
+        )}
+
+        {/* Weather Widget - All 4 Char Dhams */}
+        {weatherData.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold mb-4">Live Weather - Char Dham</h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {weatherData.map((weather, index) => (
+                <Card key={index} className="p-6 glass-effect hover:shadow-elevated transition-all">
+                  <div className="text-center space-y-3">
+                    <div className="flex items-center justify-center gap-2">
+                      <img 
+                        src={`https://openweathermap.org/img/wn/${weather.icon}@2x.png`}
+                        alt={weather.condition}
+                        className="w-16 h-16"
+                      />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold">{weather.location}</h3>
+                      <p className="text-3xl font-bold text-primary">{weather.temp}°C</p>
+                      <p className="text-sm text-muted-foreground capitalize">{weather.condition}</p>
+                    </div>
+                    <div className="space-y-2 pt-3 border-t">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Droplets className="h-4 w-4" />
+                          Humidity
+                        </span>
+                        <span className="font-semibold">{weather.humidity}%</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Wind className="h-4 w-4" />
+                          Wind
+                        </span>
+                        <span className="font-semibold">{weather.windSpeed} km/h</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Eye className="h-4 w-4" />
+                          Visibility
+                        </span>
+                        <span className="font-semibold">{weather.visibility} km</span>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
             </div>
           </div>
-        </Card>
+        )}
 
         {/* Main Tabs */}
         <Tabs defaultValue="hotels" className="space-y-6">
@@ -276,8 +387,12 @@ const Dashboard = () => {
                     </div>
                   </div>
 
-                  <Button className="w-full">
-                    View on Map
+                  <Button 
+                    className="w-full"
+                    onClick={() => window.open(route.mapsUrl, '_blank')}
+                  >
+                    <MapPin className="h-4 w-4 mr-2" />
+                    View on Google Maps
                   </Button>
                 </Card>
               ))}
