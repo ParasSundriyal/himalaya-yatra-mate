@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import SimpleMap from "@/components/SimpleMap";
 import { 
   Hotel, 
@@ -12,14 +14,21 @@ import {
   Navigation,
   Phone,
   IndianRupee,
-  Cloud,
-  Thermometer,
   Wind,
   Droplets,
   Eye,
-  Map
+  Map,
+  Calendar,
+  Users,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  QrCode
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import api from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 
 interface WeatherData {
   location: string;
@@ -31,10 +40,80 @@ interface WeatherData {
   icon: string;
 }
 
+interface Hotel {
+  _id: string;
+  name: string;
+  location: string;
+  rating: number;
+  pricePerNight: number;
+  availableRooms: number;
+  amenities: string[];
+  contact?: {
+    phone?: string;
+    email?: string;
+  };
+}
+
+interface Taxi {
+  _id: string;
+  driverName: string;
+  driverPhone: string;
+  vehicleType: string;
+  vehicleNumber: string;
+  seats: number;
+  rating: number;
+  ratePerKm: number;
+  location: string;
+  isAvailable: boolean;
+}
+
+interface Booking {
+  _id: string;
+  bookingType: string;
+  status: string;
+  amount: number;
+  createdAt: string;
+  hotel?: any;
+  taxi?: any;
+  parking?: any;
+}
+
 const Dashboard = () => {
   const [weatherData, setWeatherData] = useState<WeatherData[]>([]);
-  const [apiKey, setApiKey] = useState(localStorage.getItem('weatherApiKey') || '');
   const [loading, setLoading] = useState(false);
+  
+  // Data states
+  const [hotels, setHotels] = useState<Hotel[]>([]);
+  const [taxis, setTaxis] = useState<Taxi[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [hourlyPasses, setHourlyPasses] = useState<any[]>([]);
+  const [loadingHotels, setLoadingHotels] = useState(false);
+  const [loadingTaxis, setLoadingTaxis] = useState(false);
+  const [loadingBookings, setLoadingBookings] = useState(false);
+  const [loadingPasses, setLoadingPasses] = useState(false);
+  
+  // Booking dialogs
+  const [hotelBookingDialog, setHotelBookingDialog] = useState(false);
+  const [taxiBookingDialog, setTaxiBookingDialog] = useState(false);
+  const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
+  const [selectedTaxi, setSelectedTaxi] = useState<Taxi | null>(null);
+  
+  // Booking form data
+  const [hotelBookingData, setHotelBookingData] = useState({
+    checkIn: '',
+    checkOut: '',
+    guests: 1,
+    rooms: 1
+  });
+  
+  const [taxiBookingData, setTaxiBookingData] = useState({
+    pickupLocation: '',
+    dropoffLocation: '',
+    pickupTime: '',
+    distance: 0
+  });
+
+  const { toast } = useToast();
 
   const charDhams = [
     { name: 'Badrinath', lat: 30.7433, lon: 79.4938 },
@@ -43,104 +122,229 @@ const Dashboard = () => {
     { name: 'Yamunotri', lat: 31.0118, lon: 78.4270 }
   ];
 
-  useEffect(() => {
-    if (apiKey) {
-      fetchWeatherData();
+  // Fetch hotels
+  const fetchHotels = async () => {
+    setLoadingHotels(true);
+    try {
+      const response = await api.hotels.getAll({ available: true });
+      if (response.success) {
+        setHotels(response.hotels || []);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch hotels",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingHotels(false);
     }
-  }, [apiKey]);
+  };
+
+  // Fetch taxis
+  const fetchTaxis = async () => {
+    setLoadingTaxis(true);
+    try {
+      const response = await api.taxis.getAll({});
+      if (response.success) {
+        setTaxis(response.taxis || []);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch taxis",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingTaxis(false);
+    }
+  };
+
+  // Fetch bookings
+  const fetchBookings = async () => {
+    setLoadingBookings(true);
+    try {
+      const response = await api.bookings.getAll({});
+      if (response.success) {
+        setBookings(response.bookings || []);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch bookings",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingBookings(false);
+    }
+  };
+
+  // Fetch hourly passes
+  const fetchHourlyPasses = async () => {
+    setLoadingPasses(true);
+    try {
+      const response = await api.hourlyPasses.getMyPasses({});
+      if (response.success) {
+        setHourlyPasses(response.passes || []);
+      }
+    } catch (error: any) {
+      // It's okay if user is not logged in or has no passes
+      setHourlyPasses([]);
+    } finally {
+      setLoadingPasses(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHotels();
+    fetchTaxis();
+    fetchBookings();
+    fetchHourlyPasses();
+  }, []);
+
+  useEffect(() => {
+    fetchWeatherData();
+  }, []);
 
   const fetchWeatherData = async () => {
+    const apiKey = import.meta.env.VITE_WEATHER_API_KEY;
+    
+    if (!apiKey) {
+      console.error('Weather API key is not configured. Please add VITE_WEATHER_API_KEY to your .env file');
+      toast({
+        title: "Weather Unavailable",
+        description: "Weather API key is not configured. Please contact the administrator.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const weatherPromises = charDhams.map(async (dham) => {
         const response = await fetch(
           `https://api.openweathermap.org/data/2.5/weather?lat=${dham.lat}&lon=${dham.lon}&appid=${apiKey}&units=metric`
         );
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch weather for ${dham.name}`);
+        }
+        
         const data = await response.json();
         return {
           location: dham.name,
           temp: Math.round(data.main?.temp || 0),
           condition: data.weather?.[0]?.description || 'N/A',
           humidity: data.main?.humidity || 0,
-          windSpeed: Math.round((data.wind?.speed || 0) * 3.6), // Convert m/s to km/h
-          visibility: Math.round((data.visibility || 0) / 1000), // Convert to km
+          windSpeed: Math.round((data.wind?.speed || 0) * 3.6),
+          visibility: Math.round((data.visibility || 0) / 1000),
           icon: data.weather?.[0]?.icon || '01d'
         };
       });
       const results = await Promise.all(weatherPromises);
       setWeatherData(results);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching weather:', error);
+      toast({
+        title: "Weather Update Failed",
+        description: error.message || "Failed to fetch weather data. Please try again later.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApiKeySubmit = () => {
-    localStorage.setItem('weatherApiKey', apiKey);
-    fetchWeatherData();
-  };
-  const hotels = [
-    { 
-      name: "Divine Heights Hotel", 
-      location: "Badrinath", 
-      rating: 4.5, 
-      price: 2500, 
-      available: true,
-      amenities: ["WiFi", "Restaurant", "Parking"]
-    },
-    { 
-      name: "Mountain View Resort", 
-      location: "Kedarnath", 
-      rating: 4.8, 
-      price: 3200, 
-      available: true,
-      amenities: ["WiFi", "Spa", "Temple View"]
-    },
-    { 
-      name: "Ganga Retreat", 
-      location: "Gangotri", 
-      rating: 4.3, 
-      price: 2000, 
-      available: true,
-      amenities: ["River View", "Restaurant"]
-    },
-    { 
-      name: "Yamuna Palace", 
-      location: "Yamunotri", 
-      rating: 4.6, 
-      price: 2800, 
-      available: false,
-      amenities: ["WiFi", "Parking", "Hot Water"]
-    },
-  ];
+  // Hotel booking
+  const handleHotelBook = async () => {
+    if (!selectedHotel) return;
+    
+    try {
+      const response = await api.hotels.book({
+        hotelId: selectedHotel._id,
+        checkIn: hotelBookingData.checkIn,
+        checkOut: hotelBookingData.checkOut,
+        guests: hotelBookingData.guests,
+        rooms: hotelBookingData.rooms
+      });
 
-  const taxis = [
-    { 
-      driver: "Rajesh Kumar", 
-      vehicle: "Toyota Innova", 
-      seats: 7, 
-      rating: 4.7, 
-      rate: 15,
-      available: true
-    },
-    { 
-      driver: "Amit Sharma", 
-      vehicle: "Maruti Ertiga", 
-      seats: 7, 
-      rating: 4.5, 
-      rate: 12,
-      available: true
-    },
-    { 
-      driver: "Vikram Singh", 
-      vehicle: "Mahindra Scorpio", 
-      seats: 8, 
-      rating: 4.8, 
-      rate: 18,
-      available: true
-    },
-  ];
+      if (response.success) {
+        toast({
+          title: "Booking Successful",
+          description: `Hotel ${selectedHotel.name} booked successfully!`,
+        });
+        setHotelBookingDialog(false);
+        setSelectedHotel(null);
+        fetchHotels();
+        fetchBookings();
+      }
+    } catch (error: any) {
+      toast({
+        title: "Booking Failed",
+        description: error.message || "Failed to book hotel",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Taxi booking
+  const handleTaxiBook = async () => {
+    if (!selectedTaxi) return;
+    
+    try {
+      const response = await api.taxis.book({
+        taxiId: selectedTaxi._id,
+        pickupLocation: taxiBookingData.pickupLocation,
+        dropoffLocation: taxiBookingData.dropoffLocation,
+        pickupTime: taxiBookingData.pickupTime,
+        distance: taxiBookingData.distance
+      });
+
+      if (response.success) {
+        toast({
+          title: "Booking Successful",
+          description: `Taxi booked successfully! Driver: ${selectedTaxi.driverName}`,
+        });
+        setTaxiBookingDialog(false);
+        setSelectedTaxi(null);
+        fetchTaxis();
+        fetchBookings();
+      }
+    } catch (error: any) {
+      toast({
+        title: "Booking Failed",
+        description: error.message || "Failed to book taxi",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Cancel booking
+  const handleCancelBooking = async (bookingId: string, type: string) => {
+    try {
+      if (type === 'hotel') {
+        await api.hotels.cancelBooking(bookingId);
+      } else if (type === 'taxi') {
+        await api.taxis.cancelBooking(bookingId);
+      } else if (type === 'parking') {
+        await api.parking.cancelBooking(bookingId);
+      }
+      
+      toast({
+        title: "Booking Cancelled",
+        description: "Your booking has been cancelled successfully",
+      });
+      fetchBookings();
+      if (type === 'hotel') fetchHotels();
+      if (type === 'taxi') fetchTaxis();
+    } catch (error: any) {
+      toast({
+        title: "Cancellation Failed",
+        description: error.message || "Failed to cancel booking",
+        variant: "destructive",
+      });
+    }
+  };
 
   const routes = [
     {
@@ -173,6 +377,19 @@ const Dashboard = () => {
     },
   ];
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return 'bg-green-500';
+      case 'pending':
+        return 'bg-yellow-500';
+      case 'cancelled':
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
   return (
     <div className="min-h-screen py-8">
       <div className="container mx-auto px-4">
@@ -184,31 +401,27 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Weather API Key Input */}
-        {!apiKey && (
-          <Card className="p-6 mb-6 bg-secondary/5 border-secondary/20">
-            <h3 className="font-semibold mb-3">Weather API Setup</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Enter your OpenWeatherMap API key to view live weather data for all Char Dhams.
-              Get a free API key at <a href="https://openweathermap.org/api" target="_blank" rel="noopener noreferrer" className="text-primary underline">openweathermap.org</a>
-            </p>
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                placeholder="Enter your OpenWeatherMap API key"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="flex-1"
-              />
-              <Button onClick={handleApiKeySubmit}>Save</Button>
+        {/* Weather Widget */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-4">Live Weather - Char Dham</h2>
+          {loading ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <Card key={i} className="p-6">
+                  <div className="text-center space-y-3">
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-16 w-16 animate-spin text-primary" />
+                    </div>
+                    <div>
+                      <div className="h-6 bg-muted rounded animate-pulse mb-2" />
+                      <div className="h-8 bg-muted rounded animate-pulse mb-2" />
+                      <div className="h-4 bg-muted rounded animate-pulse" />
+                    </div>
+                  </div>
+                </Card>
+              ))}
             </div>
-          </Card>
-        )}
-
-        {/* Weather Widget - All 4 Char Dhams */}
-        {weatherData.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold mb-4">Live Weather - Char Dham</h2>
+          ) : weatherData.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
               {weatherData.map((weather, index) => (
                 <Card key={index} className="p-6 glass-effect hover:shadow-elevated transition-all">
@@ -252,15 +465,22 @@ const Dashboard = () => {
                 </Card>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <Card className="p-6">
+              <div className="text-center">
+                <AlertCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">Weather data is currently unavailable</p>
+              </div>
+            </Card>
+          )}
+        </div>
 
         {/* Main Tabs */}
-        <Tabs defaultValue="map" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs defaultValue="hotels" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="map">
               <Map className="h-4 w-4 mr-2" />
-              Map View
+              Map
             </TabsTrigger>
             <TabsTrigger value="hotels">
               <Hotel className="h-4 w-4 mr-2" />
@@ -274,121 +494,279 @@ const Dashboard = () => {
               <Navigation className="h-4 w-4 mr-2" />
               Routes
             </TabsTrigger>
+            <TabsTrigger value="bookings">
+              <Calendar className="h-4 w-4 mr-2" />
+              My Bookings
+            </TabsTrigger>
           </TabsList>
 
-          {/* Interactive Map Tab */}
+          {/* Map Tab */}
           <TabsContent value="map" className="space-y-4">
             <Card className="p-6">
               <div className="mb-4">
                 <h2 className="text-2xl font-bold mb-2">Interactive Char Dham Map</h2>
                 <p className="text-muted-foreground">
-                  Explore hotels, taxis, and pilgrimage routes across the Char Dham region. 
-                  Click on markers for more details and booking options.
+                  Explore hotels, taxis, and pilgrimage routes across the Char Dham region.
                 </p>
               </div>
               <SimpleMap />
-              <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-red-500"></div>
-                  <span>Char Dham Sites</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-purple-500"></div>
-                  <span>Hotels</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                  <span>Taxis</span>
-                </div>
-              </div>
             </Card>
           </TabsContent>
 
           {/* Hotels Tab */}
           <TabsContent value="hotels" className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-6">
-              {hotels.map((hotel, index) => (
-                <Card key={index} className="p-6 hover:shadow-lg transition-all">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="text-xl font-semibold mb-1">{hotel.name}</h3>
-                      <div className="flex items-center text-muted-foreground text-sm mb-2">
-                        <MapPin className="h-4 w-4 mr-1" />
-                        {hotel.location}
+            {loadingHotels ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : hotels.length === 0 ? (
+              <Card className="p-12 text-center">
+                <AlertCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">No hotels available at the moment</p>
+              </Card>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-6">
+                {hotels.map((hotel) => (
+                  <Card key={hotel._id} className="p-6 hover:shadow-lg transition-all">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="text-xl font-semibold mb-1">{hotel.name}</h3>
+                        <div className="flex items-center text-muted-foreground text-sm mb-2">
+                          <MapPin className="h-4 w-4 mr-1" />
+                          {hotel.location}
+                        </div>
                       </div>
+                      <Badge variant={hotel.availableRooms > 0 ? "secondary" : "destructive"}>
+                        {hotel.availableRooms > 0 ? `${hotel.availableRooms} Available` : "Fully Booked"}
+                      </Badge>
                     </div>
-                    <Badge variant={hotel.available ? "secondary" : "destructive"}>
-                      {hotel.available ? "Available" : "Booked"}
-                    </Badge>
-                  </div>
 
-                  <div className="flex items-center mb-3">
-                    <Star className="h-4 w-4 fill-primary text-primary mr-1" />
-                    <span className="font-semibold mr-2">{hotel.rating}</span>
-                    <span className="text-muted-foreground text-sm">Rating</span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {hotel.amenities.map((amenity, i) => (
-                      <Badge key={i} variant="outline">{amenity}</Badge>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center text-lg font-bold">
-                      <IndianRupee className="h-5 w-5 mr-1" />
-                      {hotel.price}
-                      <span className="text-sm text-muted-foreground font-normal ml-1">/night</span>
+                    <div className="flex items-center mb-3">
+                      <Star className="h-4 w-4 fill-primary text-primary mr-1" />
+                      <span className="font-semibold mr-2">{hotel.rating}</span>
+                      <span className="text-muted-foreground text-sm">Rating</span>
                     </div>
-                    <Button disabled={!hotel.available}>
-                      {hotel.available ? "Book Now" : "Fully Booked"}
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
+
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {hotel.amenities?.map((amenity, i) => (
+                        <Badge key={i} variant="outline">{amenity}</Badge>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center text-lg font-bold">
+                        <IndianRupee className="h-5 w-5 mr-1" />
+                        {hotel.pricePerNight}
+                        <span className="text-sm text-muted-foreground font-normal ml-1">/night</span>
+                      </div>
+                      <Dialog open={hotelBookingDialog && selectedHotel?._id === hotel._id} onOpenChange={(open) => {
+                        setHotelBookingDialog(open);
+                        if (open) setSelectedHotel(hotel);
+                        else setSelectedHotel(null);
+                      }}>
+                        <DialogTrigger asChild>
+                          <Button disabled={hotel.availableRooms === 0}>
+                            {hotel.availableRooms > 0 ? "Book Now" : "Fully Booked"}
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Book {hotel.name}</DialogTitle>
+                            <DialogDescription>
+                              Fill in the details to complete your hotel booking
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="checkIn">Check-in Date *</Label>
+                                <Input
+                                  id="checkIn"
+                                  type="date"
+                                  value={hotelBookingData.checkIn}
+                                  onChange={(e) => setHotelBookingData({...hotelBookingData, checkIn: e.target.value})}
+                                  min={new Date().toISOString().split('T')[0]}
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="checkOut">Check-out Date *</Label>
+                                <Input
+                                  id="checkOut"
+                                  type="date"
+                                  value={hotelBookingData.checkOut}
+                                  onChange={(e) => setHotelBookingData({...hotelBookingData, checkOut: e.target.value})}
+                                  min={hotelBookingData.checkIn || new Date().toISOString().split('T')[0]}
+                                  required
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="guests">Number of Guests *</Label>
+                                <Input
+                                  id="guests"
+                                  type="number"
+                                  min="1"
+                                  value={hotelBookingData.guests}
+                                  onChange={(e) => setHotelBookingData({...hotelBookingData, guests: parseInt(e.target.value)})}
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="rooms">Number of Rooms *</Label>
+                                <Input
+                                  id="rooms"
+                                  type="number"
+                                  min="1"
+                                  max={hotel.availableRooms}
+                                  value={hotelBookingData.rooms}
+                                  onChange={(e) => setHotelBookingData({...hotelBookingData, rooms: parseInt(e.target.value)})}
+                                  required
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => setHotelBookingDialog(false)}>Cancel</Button>
+                            <Button onClick={handleHotelBook}>Confirm Booking</Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* Taxis Tab */}
           <TabsContent value="taxis" className="space-y-4">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {taxis.map((taxi, index) => (
-                <Card key={index} className="p-6 hover:shadow-lg transition-all">
-                  <div className="flex items-center justify-between mb-4">
-                    <Car className="h-8 w-8 text-primary" />
-                    <Badge variant="secondary">Available</Badge>
-                  </div>
-
-                  <h3 className="text-xl font-semibold mb-1">{taxi.driver}</h3>
-                  <p className="text-muted-foreground text-sm mb-3">{taxi.vehicle}</p>
-
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Seats</span>
-                      <span className="font-semibold">{taxi.seats} passengers</span>
+            {loadingTaxis ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : taxis.length === 0 ? (
+              <Card className="p-12 text-center">
+                <AlertCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">No taxis available at the moment</p>
+              </Card>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {taxis.map((taxi) => (
+                  <Card key={taxi._id} className="p-6 hover:shadow-lg transition-all">
+                    <div className="flex items-center justify-between mb-4">
+                      <Car className="h-8 w-8 text-primary" />
+                      <Badge variant={taxi.isAvailable ? "secondary" : "destructive"}>
+                        {taxi.isAvailable ? "Available" : "Unavailable"}
+                      </Badge>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Rating</span>
-                      <div className="flex items-center">
-                        <Star className="h-4 w-4 fill-primary text-primary mr-1" />
-                        <span className="font-semibold">{taxi.rating}</span>
+
+                    <h3 className="text-xl font-semibold mb-1">{taxi.driverName}</h3>
+                    <p className="text-muted-foreground text-sm mb-3">{taxi.vehicleType} - {taxi.vehicleNumber}</p>
+
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Seats</span>
+                        <span className="font-semibold">{taxi.seats} passengers</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Rating</span>
+                        <div className="flex items-center">
+                          <Star className="h-4 w-4 fill-primary text-primary mr-1" />
+                          <span className="font-semibold">{taxi.rating}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Rate</span>
+                        <span className="font-semibold">₹{taxi.ratePerKm}/km</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Location</span>
+                        <span className="font-semibold">{taxi.location}</span>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Rate</span>
-                      <span className="font-semibold">₹{taxi.rate}/km</span>
-                    </div>
-                  </div>
 
-                  <div className="flex gap-2">
-                    <Button className="flex-1">Book Ride</Button>
-                    <Button variant="outline" size="icon">
-                      <Phone className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
+                    <div className="flex gap-2">
+                      <Dialog open={taxiBookingDialog && selectedTaxi?._id === taxi._id} onOpenChange={(open) => {
+                        setTaxiBookingDialog(open);
+                        if (open) setSelectedTaxi(taxi);
+                        else setSelectedTaxi(null);
+                      }}>
+                        <DialogTrigger asChild>
+                          <Button className="flex-1" disabled={!taxi.isAvailable}>
+                            Book Ride
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Book Taxi - {taxi.driverName}</DialogTitle>
+                            <DialogDescription>
+                              {taxi.vehicleType} - {taxi.vehicleNumber}
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <div>
+                              <Label htmlFor="pickupLocation">Pickup Location *</Label>
+                              <Input
+                                id="pickupLocation"
+                                value={taxiBookingData.pickupLocation}
+                                onChange={(e) => setTaxiBookingData({...taxiBookingData, pickupLocation: e.target.value})}
+                                placeholder="Enter pickup location"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="dropoffLocation">Drop-off Location *</Label>
+                              <Input
+                                id="dropoffLocation"
+                                value={taxiBookingData.dropoffLocation}
+                                onChange={(e) => setTaxiBookingData({...taxiBookingData, dropoffLocation: e.target.value})}
+                                placeholder="Enter drop-off location"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="pickupTime">Pickup Date & Time *</Label>
+                              <Input
+                                id="pickupTime"
+                                type="datetime-local"
+                                value={taxiBookingData.pickupTime}
+                                onChange={(e) => setTaxiBookingData({...taxiBookingData, pickupTime: e.target.value})}
+                                required
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="distance">Distance (km) *</Label>
+                              <Input
+                                id="distance"
+                                type="number"
+                                min="0"
+                                step="0.1"
+                                value={taxiBookingData.distance}
+                                onChange={(e) => setTaxiBookingData({...taxiBookingData, distance: parseFloat(e.target.value)})}
+                                placeholder="Enter distance"
+                                required
+                              />
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Estimated fare: ₹{taxiBookingData.distance * taxi.ratePerKm}
+                              </p>
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => setTaxiBookingDialog(false)}>Cancel</Button>
+                            <Button onClick={handleTaxiBook}>Confirm Booking</Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                      <Button variant="outline" size="icon" onClick={() => window.open(`tel:${taxi.driverPhone}`)}>
+                        <Phone className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* Routes Tab */}
@@ -431,6 +809,147 @@ const Dashboard = () => {
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          {/* My Bookings Tab */}
+          <TabsContent value="bookings" className="space-y-4">
+            {loadingBookings ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : bookings.length === 0 ? (
+              <Card className="p-12 text-center">
+                <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">You don't have any bookings yet</p>
+                <p className="text-sm text-muted-foreground mt-2">Start by booking a hotel or taxi</p>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {bookings.map((booking) => (
+                  <Card key={booking._id} className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-4">
+                        {booking.bookingType === 'hotel' && <Hotel className="h-8 w-8 text-primary" />}
+                        {booking.bookingType === 'taxi' && <Car className="h-8 w-8 text-primary" />}
+                        {booking.bookingType === 'parking' && <Car className="h-8 w-8 text-primary" />}
+                        <div>
+                          <h3 className="text-lg font-semibold capitalize">{booking.bookingType} Booking</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Booked on {new Date(booking.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge className={getStatusColor(booking.status)}>
+                          {booking.status}
+                        </Badge>
+                        <div className="text-right">
+                          <div className="font-semibold">₹{booking.amount}</div>
+                          <div className="text-xs text-muted-foreground">Total Amount</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Booking Details */}
+                    {booking.bookingType === 'hotel' && booking.hotel && (
+                      <div className="space-y-2 mb-4">
+                        <p><strong>Hotel:</strong> {booking.hotel.hotelId?.name || 'N/A'}</p>
+                        <p><strong>Location:</strong> {booking.hotel.hotelId?.location || 'N/A'}</p>
+                        <p><strong>Check-in:</strong> {new Date(booking.hotel.checkIn).toLocaleDateString()}</p>
+                        <p><strong>Check-out:</strong> {new Date(booking.hotel.checkOut).toLocaleDateString()}</p>
+                        <p><strong>Guests:</strong> {booking.hotel.guests}</p>
+                        <p><strong>Rooms:</strong> {booking.hotel.rooms}</p>
+                      </div>
+                    )}
+
+                    {booking.bookingType === 'taxi' && booking.taxi && (
+                      <div className="space-y-2 mb-4">
+                        <p><strong>Driver:</strong> {booking.taxi.taxiId?.driverName || 'N/A'}</p>
+                        <p><strong>Vehicle:</strong> {booking.taxi.taxiId?.vehicleType || 'N/A'}</p>
+                        <p><strong>Pickup:</strong> {booking.taxi.pickupLocation}</p>
+                        <p><strong>Drop-off:</strong> {booking.taxi.dropoffLocation}</p>
+                        <p><strong>Distance:</strong> {booking.taxi.distance} km</p>
+                        <p><strong>Pickup Time:</strong> {new Date(booking.taxi.pickupTime).toLocaleString()}</p>
+                      </div>
+                    )}
+
+                    {booking.status === 'confirmed' && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleCancelBooking(booking._id, booking.bookingType)}
+                      >
+                        Cancel Booking
+                      </Button>
+                    )}
+                  </Card>
+                ))}
+
+                {/* Hourly Passes Section */}
+                {loadingPasses ? (
+                  <div className="flex justify-center items-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : hourlyPasses.length > 0 && (
+                  <>
+                    <div className="mt-6 pt-6 border-t">
+                      <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-primary" />
+                        My Hourly Passes
+                      </h3>
+                    </div>
+                    {hourlyPasses.map((pass) => (
+                      <Card key={pass.id} className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-4">
+                            <Clock className="h-8 w-8 text-primary" />
+                            <div>
+                              <h3 className="text-lg font-semibold">Hourly Pass</h3>
+                              <p className="text-sm text-muted-foreground">
+                                Pass ID: <span className="font-mono">{pass.passId}</span>
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                Booked on {new Date(pass.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Badge className={getStatusColor(pass.status)}>
+                              {pass.status}
+                            </Badge>
+                            <div className="text-right">
+                              <div className="font-semibold flex items-center">
+                                <IndianRupee className="h-4 w-4 mr-1" />
+                                {pass.amount}
+                              </div>
+                              <div className="text-xs text-muted-foreground">Amount</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 mb-4">
+                          <p><strong>Checkpoint:</strong> {pass.checkpoint?.name || 'N/A'}</p>
+                          <p><strong>Location:</strong> {pass.checkpoint?.location || 'N/A'}</p>
+                          <p><strong>Vehicle Owner:</strong> {pass.vehicleOwnerName}</p>
+                          <p><strong>Vehicle Number:</strong> {pass.vehicleNumber}</p>
+                          <p><strong>Phone:</strong> {pass.vehicleOwnerPhone}</p>
+                          <p><strong>Time Slot:</strong> {new Date(pass.timeSlot.start).toLocaleString()} - {new Date(pass.timeSlot.end).toLocaleString()}</p>
+                          <p><strong>Number of People:</strong> {pass.numberOfPeople}</p>
+                          <p><strong>Payment Status:</strong> {pass.paymentStatus}</p>
+                        </div>
+
+                        {pass.qrCode && (
+                          <div className="mb-4">
+                            <p className="text-sm font-semibold mb-2">QR Code:</p>
+                            <img src={pass.qrCode} alt="QR Code" className="w-32 h-32 border rounded-lg" />
+                          </div>
+                        )}
+                      </Card>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
 

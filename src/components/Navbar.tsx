@@ -13,6 +13,7 @@ const Navbar = () => {
     { name: "Home", path: "/" },
     { name: "AI Vehicle Detection", path: "/ai-detection" },
     { name: "Parking Booking", path: "/parking" },
+    { name: "Hourly Pass", path: "/hourly-pass" },
   ];
 
   const userNavItems = [
@@ -25,6 +26,7 @@ const Navbar = () => {
 
   const adminNavItems = [
     { name: "Admin Dashboard", path: "/admin" },
+    { name: "Hourly Pass Admin", path: "/admin/hourly-passes" },
   ];
 
   const getNavItems = () => {
@@ -90,11 +92,18 @@ const Navbar = () => {
                 </Button>
               </div>
             ) : (
-              <Link to="/login">
-                <Button size="sm" className="ml-2">
-                  Login
-                </Button>
-              </Link>
+              <div className="flex items-center gap-2 ml-2">
+                <Link to="/signup">
+                  <Button variant="outline" size="sm">
+                    Sign Up
+                  </Button>
+                </Link>
+                <Link to="/login">
+                  <Button size="sm">
+                    Login
+                  </Button>
+                </Link>
+              </div>
             )}
           </div>
 
@@ -152,11 +161,18 @@ const Navbar = () => {
                   </Button>
                 </>
               ) : (
-                <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
-                  <Button className="w-full mt-2">
-                    Login
-                  </Button>
-                </Link>
+                <div className="flex flex-col gap-2 mt-2">
+                  <Link to="/signup" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="outline" className="w-full">
+                      Sign Up
+                    </Button>
+                  </Link>
+                  <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
+                    <Button className="w-full">
+                      Login
+                    </Button>
+                  </Link>
+                </div>
               )}
             </div>
           </div>

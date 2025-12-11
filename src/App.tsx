@@ -8,11 +8,14 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import AIDetection from "./pages/AIDetection";
 import Parking from "./pages/Parking";
 import Dashboard from "./pages/Dashboard";
 import GroupPortal from "./pages/GroupPortal";
 import Admin from "./pages/Admin";
+import HourlyPassBooking from "./pages/HourlyPassBooking";
+import HourlyPassAdmin from "./pages/HourlyPassAdmin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +31,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
             <Route path="/ai-detection" element={<AIDetection />} />
             <Route path="/parking" element={<Parking />} />
             <Route 
@@ -51,6 +55,15 @@ const App = () => (
               element={
                 <ProtectedRoute requiredRole="admin">
                   <Admin />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="/hourly-pass" element={<HourlyPassBooking />} />
+            <Route 
+              path="/admin/hourly-passes" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <HourlyPassAdmin />
                 </ProtectedRoute>
               } 
             />
