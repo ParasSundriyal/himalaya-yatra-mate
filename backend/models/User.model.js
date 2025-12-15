@@ -35,6 +35,9 @@ const userSchema = new mongoose.Schema({
     sparse: true, // Allows multiple null values
     match: [/^[0-9]{12}$/, 'Aadhar must be 12 digits']
   },
+  photo: {
+    type: String, // store base64 or URL
+  },
   dateOfBirth: {
     type: Date
   },

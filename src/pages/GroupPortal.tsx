@@ -574,6 +574,18 @@ const GroupPortal = () => {
     }
   };
 
+  const profileQrData = user
+    ? JSON.stringify({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        aadhar: user.aadhar,
+      })
+    : "Guest";
+  const profileQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(profileQrData)}`;
+
   if (loading) {
     return (
       <div className="min-h-screen py-8 flex items-center justify-center">
@@ -605,6 +617,55 @@ const GroupPortal = () => {
             </div>
           )}
         </div>
+
+        {/* Instructor Profile Card */}
+        <Card className="mb-6 border-slate-200 shadow-lg">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-6">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-full bg-gradient-to-br from-blue-500 to-sky-400 text-white flex items-center justify-center text-xl font-bold shadow-md overflow-hidden">
+                {user?.photo ? (
+                  <img src={user.photo} alt="Instructor" className="h-full w-full object-cover" />
+                ) : (
+                  (user?.name?.[0] || '?').toUpperCase()
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-semibold">{user?.name || "Guest User"}</h2>
+                  {user?.role && (
+                    <Badge variant="secondary" className="uppercase tracking-wide text-xs">
+                      {user.role}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground">{user?.email || "Not signed in"}</p>
+                {user?.phone && <p className="text-sm text-muted-foreground">📞 {user.phone}</p>}
+                <div className="flex flex-wrap gap-2 mt-2 text-xs text-muted-foreground">
+                  {user?.id && (
+                    <span className="px-2 py-1 rounded-full bg-slate-100 border text-slate-700">
+                      Registration ID: {user.id}
+                    </span>
+                  )}
+                  {user?.aadhar && (
+                    <span className="px-2 py-1 rounded-full bg-slate-100 border text-slate-700">
+                      Aadhar: {user.aadhar}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col items-start md:items-end gap-2">
+              <p className="text-sm text-muted-foreground">Scan to view instructor details</p>
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                <img
+                  src={profileQrUrl}
+                  alt="Instructor QR Code"
+                  className="w-40 h-40 object-contain"
+                />
+              </div>
+            </div>
+          </div>
+        </Card>
 
         {/* Stats */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

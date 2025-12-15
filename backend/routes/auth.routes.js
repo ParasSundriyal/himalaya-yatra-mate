@@ -14,7 +14,8 @@ router.post('/register', [
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   body('phone').matches(/^[0-9]{10}$/).withMessage('Valid 10-digit phone number is required'),
-  body('role').optional().isIn(['user', 'group', 'admin']).withMessage('Invalid role')
+  body('role').optional().isIn(['user', 'group', 'admin']).withMessage('Invalid role'),
+  body('photo').optional().isString(),
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -22,7 +23,7 @@ router.post('/register', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { name, email, password, phone, role = 'user', aadhar, dateOfBirth, address, organizationName, licenseNumber } = req.body;
+    const { name, email, password, phone, role = 'user', aadhar, dateOfBirth, address, organizationName, licenseNumber, photo } = req.body;
 
     // Validate role
     if (role && !['user', 'group'].includes(role)) {
@@ -62,6 +63,7 @@ router.post('/register', [
       role,
       aadhar,
       dateOfBirth,
+      photo,
       address: Object.keys(userAddress).length > 0 ? userAddress : undefined
     });
 
@@ -78,7 +80,9 @@ router.post('/register', [
         name: user.name,
         email: user.email,
         phone: user.phone,
-        role: user.role
+        role: user.role,
+        photo: user.photo,
+        aadhar: user.aadhar
       }
     });
   } catch (error) {
@@ -142,7 +146,9 @@ router.post('/login', [
         name: user.name,
         email: user.email,
         phone: user.phone,
-        role: user.role
+        role: user.role,
+        photo: user.photo,
+        aadhar: user.aadhar
       }
     });
   } catch (error) {
@@ -180,7 +186,8 @@ router.get('/me', authenticate, async (req, res) => {
 router.put('/profile', authenticate, [
   body('name').optional().trim().notEmpty(),
   body('phone').optional().matches(/^[0-9]{10}$/),
-  body('aadhar').optional().matches(/^[0-9]{12}$/)
+  body('aadhar').optional().matches(/^[0-9]{12}$/),
+  body('photo').optional().isString(),
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -188,7 +195,7 @@ router.put('/profile', authenticate, [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const allowedUpdates = ['name', 'phone', 'aadhar', 'dateOfBirth', 'address'];
+    const allowedUpdates = ['name', 'phone', 'aadhar', 'dateOfBirth', 'address', 'photo'];
     const updates = {};
 
     Object.keys(req.body).forEach(key => {

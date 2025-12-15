@@ -10,6 +10,8 @@ interface User {
   email: string;
   phone?: string;
   role: UserRole;
+  photo?: string;
+  aadhar?: string;
 }
 
 interface AuthContextType {
@@ -24,6 +26,7 @@ interface AuthContextType {
     aadhar?: string;
     dateOfBirth?: string;
     address?: any;
+    photo?: string;
   }) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -54,6 +57,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 email: response.user.email,
                 phone: response.user.phone,
                 role: response.user.role,
+                photo: response.user.photo || userData.photo,
+                aadhar: response.user.aadhar || userData.aadhar,
               });
             } else {
               // Token invalid, clear storage
@@ -81,6 +86,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userData = {
           ...response.user,
           token: response.token,
+          photo: response.user.photo,
+          aadhar: response.user.aadhar,
         };
         
         setUser({
@@ -89,6 +96,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: response.user.email,
           phone: response.user.phone,
           role: response.user.role,
+          photo: response.user.photo,
+          aadhar: response.user.aadhar,
         });
         
         localStorage.setItem("char-dham-user", JSON.stringify(userData));
@@ -131,6 +140,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userData = {
           ...response.user,
           token: response.token,
+          photo: response.user.photo,
+          aadhar: response.user.aadhar,
         };
         
         setUser({
@@ -139,6 +150,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: response.user.email,
           phone: response.user.phone,
           role: response.user.role,
+          photo: response.user.photo || data.photo,
+          aadhar: response.user.aadhar || data.aadhar,
         });
         
         localStorage.setItem("char-dham-user", JSON.stringify(userData));

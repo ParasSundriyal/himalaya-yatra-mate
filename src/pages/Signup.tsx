@@ -21,6 +21,8 @@ const Signup = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [phone, setPhone] = useState("");
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   // User-specific fields
   const [aadhar, setAadhar] = useState("");
@@ -109,6 +111,10 @@ const Signup = () => {
         role: selectedRole,
       };
 
+      if (photo) {
+        signupData.photo = photo;
+      }
+
       // Add role-specific fields
       if (selectedRole === "user") {
         if (aadhar) signupData.aadhar = aadhar;
@@ -137,6 +143,37 @@ const Signup = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePhotoChange = (file?: File) => {
+    if (!file) {
+      setPhoto(null);
+      setPhotoPreview(null);
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file",
+        description: "Please upload an image file (jpg, png, webp)",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload an image under 2MB",
+        variant: "destructive",
+      });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setPhoto(result);
+      setPhotoPreview(result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const roles = [
@@ -220,6 +257,30 @@ const Signup = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="photo">Profile Photo (optional)</Label>
+              <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
+                <div className="flex-1">
+                  <Input
+                    id="photo"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handlePhotoChange(e.target.files?.[0])}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    JPG/PNG/WebP, up to 2MB
+                  </p>
+                </div>
+                <div className="h-16 w-16 rounded-full overflow-hidden bg-muted border flex items-center justify-center text-sm text-muted-foreground">
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="Preview" className="h-full w-full object-cover" />
+                  ) : (
+                    "No photo"
+                  )}
+                </div>
               </div>
             </div>
 

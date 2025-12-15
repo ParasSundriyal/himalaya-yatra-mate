@@ -65,6 +65,7 @@ export const api = {
       aadhar?: string;
       dateOfBirth?: string;
       address?: any;
+      photo?: string;
     }) => {
       const response = await apiRequest('/auth/register', {
         method: 'POST',

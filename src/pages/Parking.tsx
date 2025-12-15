@@ -22,6 +22,17 @@ import parkingImage from "@/assets/parking-aerial.jpg";
 import api from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix for default markers in React-Leaflet
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 interface ParkingArea {
   _id: string;
@@ -296,32 +307,123 @@ Thank you for using Char Dham Yatra!
           </div>
         </Card>
 
-        {/* Search & Filter */}
+        {/* Parking Areas Map */}
         <Card className="p-6 mb-6">
-          <div className="grid md:grid-cols-4 gap-4">
-            <div className="md:col-span-2">
-              <Label htmlFor="area">Select Parking Area</Label>
-              {loadingAreas ? (
-                <div className="flex items-center gap-2 mt-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">Loading areas...</span>
-                </div>
-              ) : (
-                <select
-                  id="area"
-                  className="w-full mt-2 px-3 py-2 border rounded-md"
-                  value={selectedArea}
-                  onChange={(e) => setSelectedArea(e.target.value)}
-                >
-                  <option value="">All Areas</option>
-                  {areas.map((area) => (
-                    <option key={area._id} value={area._id}>
-                      {area.name} - {area.location}
-                    </option>
-                  ))}
-                </select>
-              )}
+          <div className="mb-4">
+            <h2 className="text-2xl font-semibold mb-2">Select Parking Area</h2>
+            <p className="text-muted-foreground text-sm">
+              Click on a parking area marker on the map to view available slots
+            </p>
+          </div>
+          {loadingAreas ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2 text-muted-foreground">Loading parking areas...</span>
             </div>
+          ) : areas.length === 0 ? (
+            <Card className="p-12 text-center">
+              <AlertCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground">No parking areas found</p>
+            </Card>
+          ) : (
+            <div className="h-[500px] w-full rounded-lg overflow-hidden border">
+              {/* @ts-ignore - MapContainer props type mismatch */}
+              <MapContainer 
+                center={areas.length > 0 ? [areas[0].coordinates.lat, areas[0].coordinates.lng] : [30.5, 78.8]} 
+                zoom={areas.length > 0 ? 10 : 9} 
+                style={{ height: '100%', width: '100%' }}
+                scrollWheelZoom={true}
+              >
+                {/* @ts-ignore - TileLayer props type mismatch */}
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                />
+                
+                {/* Parking Area Markers */}
+                {areas.map((area) => {
+                  const isSelected = selectedArea === area._id;
+                  const customIcon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="
+                      background-color: ${isSelected ? '#8B5CF6' : area.availableSlots > 0 ? '#10B981' : '#EF4444'};
+                      padding: 10px;
+                      border-radius: 50%;
+                      width: 40px;
+                      height: 40px;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                      border: ${isSelected ? '3px solid #8B5CF6' : '2px solid white'};
+                      cursor: pointer;
+                    ">
+                      <span style="font-size: 20px;">🅿️</span>
+                    </div>`,
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 40]
+                  });
+
+                  return (
+                    <Marker 
+                      key={area._id} 
+                      position={[area.coordinates.lat, area.coordinates.lng]}
+                      icon={customIcon}
+                      eventHandlers={{
+                        click: () => {
+                          setSelectedArea(area._id);
+                        }
+                      }}
+                    >
+                      <Popup>
+                        <div style={{ padding: '8px', minWidth: '200px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <h3 style={{ fontWeight: 'bold', fontSize: '16px' }}>🅿️ {area.name}</h3>
+                            <span style={{
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              backgroundColor: area.availableSlots > 0 ? '#10B981' : '#EF4444',
+                              color: 'white'
+                            }}>
+                              {area.availableSlots > 0 ? 'Available' : 'Full'}
+                            </span>
+                          </div>
+                          <p style={{ fontSize: '14px', marginBottom: '4px' }}>📍 {area.location}</p>
+                          <div style={{ fontSize: '14px', marginBottom: '8px' }}>
+                            <p>Total Slots: <strong>{area.totalSlots}</strong></p>
+                            <p>Available: <strong style={{ color: '#10B981' }}>{area.availableSlots}</strong></p>
+                            <p>Occupied: <strong style={{ color: '#EF4444' }}>{area.totalSlots - area.availableSlots}</strong></p>
+                          </div>
+                          <button 
+                            onClick={() => setSelectedArea(area._id)}
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              backgroundColor: '#8B5CF6',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '14px',
+                              cursor: 'pointer',
+                              marginTop: '8px'
+                            }}
+                          >
+                            View Slots
+                          </button>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  );
+                })}
+              </MapContainer>
+            </div>
+          )}
+        </Card>
+
+        {/* Filters */}
+        <Card className="p-6 mb-6">
+          <div className="grid md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="size">Vehicle Size</Label>
               <select 
@@ -347,6 +449,43 @@ Thank you for using Char Dham Yatra!
             </div>
           </div>
         </Card>
+
+        {/* Selected Area Info */}
+        {selectedArea && (() => {
+          const selectedAreaData = areas.find(a => a._id === selectedArea);
+          return selectedAreaData ? (
+            <Card className="p-6 mb-6 bg-primary/5 border-primary/20">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MapPin className="h-5 w-5 text-primary" />
+                    <h3 className="text-xl font-semibold">{selectedAreaData.name}</h3>
+                    <Badge className={selectedAreaData.availableSlots > 0 ? "bg-green-500" : "bg-red-500"}>
+                      {selectedAreaData.availableSlots > 0 ? `${selectedAreaData.availableSlots} Available` : "Full"}
+                    </Badge>
+                  </div>
+                  <p className="text-muted-foreground mb-2">{selectedAreaData.location}</p>
+                  <div className="flex gap-4 text-sm">
+                    <span>Total Slots: <strong>{selectedAreaData.totalSlots}</strong></span>
+                    <span>Available: <strong className="text-green-500">{selectedAreaData.availableSlots}</strong></span>
+                    <span>Occupied: <strong className="text-red-500">{selectedAreaData.totalSlots - selectedAreaData.availableSlots}</strong></span>
+                  </div>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setSelectedArea("");
+                    setSlots([]);
+                    setFilteredSlots([]);
+                  }}
+                >
+                  Clear Selection
+                </Button>
+              </div>
+            </Card>
+          ) : null;
+        })()}
 
         {/* Stats */}
         {selectedArea && (

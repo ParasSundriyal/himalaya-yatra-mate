@@ -29,6 +29,7 @@ import {
 import { useState, useEffect } from "react";
 import api from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface WeatherData {
   location: string;
@@ -114,6 +115,7 @@ const Dashboard = () => {
   });
 
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const charDhams = [
     { name: 'Badrinath', lat: 30.7433, lon: 79.4938 },
@@ -390,20 +392,117 @@ const Dashboard = () => {
     }
   };
 
+  const totalAvailableHotels = hotels.filter((h) => h.availableRooms > 0).length;
+  const availableTaxis = taxis.filter((t) => t.isAvailable).length;
+  const confirmedBookings = bookings.filter((b) => b.status === 'confirmed').length;
+  const totalPasses = hourlyPasses.length;
+  const profileQrData = user
+    ? JSON.stringify({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        aadhar: user.aadhar,
+      })
+    : "Guest";
+  const profileQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(profileQrData)}`;
+
   return (
-    <div className="min-h-screen py-8">
+    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-slate-50 py-10">
       <div className="container mx-auto px-4">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-2">Tourist Dashboard</h1>
-          <p className="text-muted-foreground">
-            Everything you need for your sacred journey
-          </p>
-        </div>
+        <Card className="relative overflow-hidden mb-8 border-0 bg-gradient-to-r from-blue-500/90 via-sky-500/85 to-emerald-400/80 text-white shadow-2xl">
+          <div className="absolute inset-0 opacity-60 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.22),transparent_30%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.22),transparent_28%),radial-gradient(circle_at_40%_80%,rgba(255,255,255,0.18),transparent_30%)]" />
+          <div className="relative p-6 md:p-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur text-sm font-medium mb-3">
+                <span className="h-2 w-2 rounded-full bg-emerald-300 animate-pulse" />
+                Journey Hub
+              </div>
+              <h1 className="text-3xl md:text-4xl font-bold mb-2">Tourist Dashboard</h1>
+              <p className="text-white/80 max-w-2xl">
+                Everything you need for your sacred journey, now in a refreshed modern look.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full lg:w-auto">
+              {[
+                { label: 'Hotels', value: totalAvailableHotels, accent: 'from-emerald-400 to-emerald-200' },
+                { label: 'Taxis', value: availableTaxis, accent: 'from-cyan-400 to-cyan-200' },
+                { label: 'Bookings', value: confirmedBookings, accent: 'from-amber-300 to-amber-100' },
+                { label: 'Passes', value: totalPasses, accent: 'from-pink-300 to-pink-100' },
+              ].map((item, i) => (
+                <div
+                  key={i}
+                  className="rounded-xl bg-white/30 backdrop-blur border border-white/40 p-3 text-center shadow-lg"
+                >
+                  <div className={`text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-br ${item.accent}`}>
+                    {item.value}
+                  </div>
+                  <div className="text-xs uppercase tracking-wide text-white/80">{item.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+
+        {/* Profile Card */}
+        <Card className="mb-6 border-slate-200 shadow-lg">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-6">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-full bg-gradient-to-br from-blue-500 to-sky-400 text-white flex items-center justify-center text-xl font-bold shadow-md overflow-hidden">
+                {user?.photo ? (
+                  <img src={user.photo} alt="Profile" className="h-full w-full object-cover" />
+                ) : (
+                  (user?.name?.[0] || '?').toUpperCase()
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-semibold">{user?.name || "Guest User"}</h2>
+                  {user?.role && (
+                    <Badge variant="secondary" className="uppercase tracking-wide text-xs">
+                      {user.role}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground">{user?.email || "Not signed in"}</p>
+                {user?.phone && <p className="text-sm text-muted-foreground">📞 {user.phone}</p>}
+                <div className="flex flex-wrap gap-2 mt-2 text-xs text-muted-foreground">
+                  {user?.id && (
+                    <span className="px-2 py-1 rounded-full bg-slate-100 border text-slate-700">
+                      Registration ID: {user.id}
+                    </span>
+                  )}
+                  {user?.aadhar && (
+                    <span className="px-2 py-1 rounded-full bg-slate-100 border text-slate-700">
+                      Aadhar: {user.aadhar}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col items-start md:items-end gap-2">
+              <p className="text-sm text-muted-foreground">Scan to view profile details</p>
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                <img
+                  src={profileQrUrl}
+                  alt="Profile QR Code"
+                  className="w-40 h-40 object-contain"
+                />
+              </div>
+            </div>
+          </div>
+        </Card>
 
         {/* Weather Widget */}
         <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">Live Weather - Char Dham</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xl font-semibold">Live Weather - Char Dham</h2>
+            <span className="text-xs px-3 py-1 rounded-full bg-primary/10 text-primary font-medium">
+              Real-time updates
+            </span>
+          </div>
           {loading ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
               {[1, 2, 3, 4].map((i) => (
@@ -424,7 +523,10 @@ const Dashboard = () => {
           ) : weatherData.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
               {weatherData.map((weather, index) => (
-                <Card key={index} className="p-6 glass-effect hover:shadow-elevated transition-all">
+                <Card
+                  key={index}
+                  className="p-6 glass-effect border-primary/10 hover:shadow-2xl hover:-translate-y-1 transition-all bg-gradient-to-br from-white via-sky-50 to-blue-50"
+                >
                   <div className="text-center space-y-3">
                     <div className="flex items-center justify-center gap-2">
                       <img 
@@ -477,7 +579,7 @@ const Dashboard = () => {
 
         {/* Main Tabs */}
         <Tabs defaultValue="hotels" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-5 rounded-2xl bg-white/80 backdrop-blur border border-slate-200 p-1 shadow-inner">
             <TabsTrigger value="map">
               <Map className="h-4 w-4 mr-2" />
               Map
