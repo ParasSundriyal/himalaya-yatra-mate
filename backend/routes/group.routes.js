@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator';
 import Group from '../models/Group.model.js';
 import User from '../models/User.model.js';
 import Booking from '../models/Booking.model.js';
+import CheckpointPass from '../models/CheckpointPass.model.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
@@ -193,53 +194,148 @@ router.delete('/remove-member/:memberId', authenticate, authorize('group', 'admi
 });
 
 // @route   GET /api/groups/member-bookings
-// @desc    Get all bookings from group members
+// @desc    Get all bookings from group members (including parking, hotels, taxis, and hourly passes)
 // @access  Private (Group role)
 router.get('/member-bookings', authenticate, authorize('group', 'admin'), async (req, res) => {
   try {
     const { type, status } = req.query;
     
     // Get instructor's group (without populating members to get ObjectIds directly)
-    const group = await Group.findOne({ instructor: req.user._id }).select('members');
+    const group = await Group.findOne({ instructor: req.user._id }).select('members _id');
     if (!group) {
       return res.status(404).json({ message: 'Group not found. Create a group first.' });
     }
 
-    // Check if group has any members
-    if (!group.members || group.members.length === 0) {
-      return res.json({
-        success: true,
-        count: 0,
-        bookings: []
-      });
+    const groupId = group._id;
+    const memberIds = group.members || [];
+    const instructorId = req.user._id;
+    
+    // Retroactively update bookings/passes that have null groupId
+    // This fixes existing data that was created before the auto-linking feature
+    // Update bookings by members OR by instructor
+    if (memberIds.length > 0) {
+      await Booking.updateMany(
+        { 
+          $or: [
+            { user: { $in: memberIds } },
+            { user: instructorId }
+          ],
+          groupId: null 
+        },
+        { 
+          $set: { groupId: groupId } 
+        }
+      );
+    } else {
+      // Even if no members, update instructor's bookings
+      await Booking.updateMany(
+        { 
+          user: instructorId,
+          groupId: null 
+        },
+        { 
+          $set: { groupId: groupId } 
+        }
+      );
     }
-
-    // group.members is already an array of ObjectIds, use directly
-    const memberIds = group.members;
     
-    // Build query
-    const query = { user: { $in: memberIds } };
+    // Update hourly passes by members OR by instructor
+    if (memberIds.length > 0) {
+      await CheckpointPass.updateMany(
+        { 
+          $or: [
+            { user: { $in: memberIds } },
+            { user: instructorId },
+            { issuedBy: instructorId }
+          ],
+          groupId: null 
+        },
+        { 
+          $set: { groupId: groupId } 
+        }
+      );
+    } else {
+      // Even if no members, update instructor's passes
+      await CheckpointPass.updateMany(
+        { 
+          $or: [
+            { user: instructorId },
+            { issuedBy: instructorId }
+          ],
+          groupId: null 
+        },
+        { 
+          $set: { groupId: groupId } 
+        }
+      );
+    }
     
-    if (type) {
-      query.bookingType = type;
+    // Build query for regular bookings (hotels, taxis, parking)
+    // Query by:
+    // 1. Member IDs (bookings by group members)
+    // 2. groupId (bookings linked to group)
+    // 3. Instructor ID (bookings made by instructor for the whole group)
+    const bookingQueryConditions = [];
+    
+    if (memberIds.length > 0) {
+      bookingQueryConditions.push({ user: { $in: memberIds } });
+    }
+    bookingQueryConditions.push({ groupId: groupId });
+    bookingQueryConditions.push({ user: instructorId }); // Instructor's own bookings
+    
+    const bookingQuery = {
+      $or: bookingQueryConditions
+    };
+    
+    if (type && type !== 'hourly-pass') {
+      bookingQuery.bookingType = type;
     }
     
     if (status) {
-      query.status = status;
+      bookingQuery.status = status;
     }
     
     // Fetch bookings with populated data
-    const bookings = await Booking.find(query)
+    const bookings = await Booking.find(bookingQuery)
       .sort({ createdAt: -1 })
       .populate('user', 'name email phone')
       .populate('parking.areaId', 'name location')
       .populate('hotel.hotelId', 'name location pricePerNight')
       .populate('taxi.taxiId', 'driverName driverPhone vehicleType vehicleNumber');
     
+    // Fetch hourly passes for group members
+    // Query by:
+    // 1. Member IDs (passes booked by group members)
+    // 2. groupId (passes linked to group)
+    // 3. Instructor ID (passes booked by instructor for the whole group)
+    // 4. issuedBy (passes issued by instructor)
+    const passQueryConditions = [];
+    
+    if (memberIds.length > 0) {
+      passQueryConditions.push({ user: { $in: memberIds } });
+    }
+    passQueryConditions.push({ groupId: groupId });
+    passQueryConditions.push({ user: instructorId }); // Instructor's own passes
+    passQueryConditions.push({ issuedBy: instructorId }); // Passes issued by instructor
+    
+    const passQuery = {
+      $or: passQueryConditions
+    };
+    
+    if (status) {
+      passQuery.status = status;
+    }
+    
+    const hourlyPasses = await CheckpointPass.find(passQuery)
+      .sort({ createdAt: -1 })
+      .populate('user', 'name email phone')
+      .populate('checkpoint', 'name location');
+    
     res.json({
       success: true,
-      count: bookings.length,
-      bookings
+      count: bookings.length + hourlyPasses.length,
+      bookings,
+      hourlyPasses
     });
   } catch (error) {
     console.error('Get member bookings error:', error);

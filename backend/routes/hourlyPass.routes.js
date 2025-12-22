@@ -5,6 +5,7 @@ import Checkpoint from '../models/Checkpoint.model.js';
 import CheckpointPass from '../models/CheckpointPass.model.js';
 import HourlyPassSlot from '../models/HourlyPassSlot.model.js';
 import User from '../models/User.model.js';
+import Group from '../models/Group.model.js';
 import { authenticate, authorize, optionalAuth } from '../middleware/auth.middleware.js';
 import QRCode from 'qrcode';
 
@@ -148,7 +149,7 @@ router.get('/checkpoints/:checkpointId/slots', async (req, res) => {
 });
 
 // @route   POST /api/hourly-passes/book
-// @desc    Book an hourly pass (Public - everyone can book)
+// @desc    Book an hourly pass (Public - everyone can book, or for group member if instructor)
 // @access  Public (optional auth for registered users)
 router.post('/book', optionalAuth, [
   body('checkpointId').isMongoId().withMessage('Valid checkpoint ID is required'),
@@ -157,7 +158,8 @@ router.post('/book', optionalAuth, [
   body('vehicleOwnerName').notEmpty().trim().withMessage('Vehicle owner name is required'),
   body('vehicleOwnerPhone').notEmpty().trim().withMessage('Vehicle owner phone is required'),
   body('vehicleNumber').notEmpty().trim().withMessage('Vehicle number is required'),
-  body('numberOfPeople').optional().isInt({ min: 1 }).withMessage('Number of people must be at least 1')
+  body('numberOfPeople').optional().isInt({ min: 1 }).withMessage('Number of people must be at least 1'),
+  body('memberId').optional().isMongoId().withMessage('Invalid member ID')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -169,20 +171,51 @@ router.post('/book', optionalAuth, [
       });
     }
 
-    const { checkpointId, date, hour, vehicleOwnerName, vehicleOwnerPhone, vehicleNumber, numberOfPeople = 1 } = req.body;
+    const { checkpointId, date, hour, vehicleOwnerName, vehicleOwnerPhone, vehicleNumber, numberOfPeople = 1, memberId } = req.body;
+
+    // Determine booking user: if instructor booking for member, use memberId; otherwise use req.user._id
+    let bookingUserId = req.user?._id || null;
+
+    // If memberId is provided and user is a group instructor, verify and use memberId
+    if (memberId && req.user && req.user.role === 'group') {
+      const group = await Group.findOne({ instructor: req.user._id });
+      
+      if (!group) {
+        return res.status(404).json({
+          success: false,
+          message: 'Group not found'
+        });
+      }
+
+      // Verify member belongs to instructor's group
+      const memberObjectId = new mongoose.Types.ObjectId(memberId);
+      if (!group.members.some(m => m.toString() === memberObjectId.toString())) {
+        return res.status(403).json({
+          success: false,
+          message: 'You can only book for members of your group'
+        });
+      }
+
+      bookingUserId = memberId;
+    } else if (memberId && (!req.user || req.user.role !== 'group')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only group instructors can book for members'
+      });
+    }
 
     // Check if user has already used a pass for this checkpoint
-    if (req.user) {
+    if (bookingUserId) {
       const usedPass = await CheckpointPass.findOne({
         checkpoint: checkpointId,
-        user: req.user._id,
+        user: bookingUserId,
         status: 'used'
       });
 
       if (usedPass) {
         return res.status(400).json({
           success: false,
-          message: 'You have already used a pass for this checkpoint. Cannot book again.'
+          message: 'This member has already used a pass for this checkpoint. Cannot book again.'
         });
       }
     }
@@ -271,9 +304,38 @@ router.post('/book', optionalAuth, [
       bookingType = req.user.role === 'group' ? 'group' : 'user';
     }
 
+    // Find group if user is a member (has instructorId OR is in a group's members array)
+    let groupId = null;
+    if (bookingUserId) {
+      const bookingUser = await User.findById(bookingUserId);
+      if (bookingUser) {
+        // Method 1: Check if user has instructorId
+        if (bookingUser.instructorId) {
+          const userGroup = await Group.findOne({ instructor: bookingUser.instructorId });
+          if (userGroup) {
+            groupId = userGroup._id;
+          }
+        }
+        
+        // Method 2: If no instructorId, check if user is in any group's members array
+        if (!groupId) {
+          const userGroup = await Group.findOne({ members: bookingUserId });
+          if (userGroup) {
+            groupId = userGroup._id;
+            // Also set instructorId for future bookings
+            if (!bookingUser.instructorId) {
+              bookingUser.instructorId = userGroup.instructor;
+              await bookingUser.save();
+            }
+          }
+        }
+      }
+    }
+
     // Create pass
     const pass = new CheckpointPass({
-      user: req.user?._id || null,
+      user: bookingUserId,
+      groupId: groupId,
       checkpoint: checkpointId,
       timeSlot: {
         start: slotStart,

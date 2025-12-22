@@ -290,22 +290,7 @@ Thank you for using Char Dham Yatra!
           </p>
         </div>
 
-        {/* Hero Image */}
-        <Card className="mb-8 overflow-hidden">
-          <div className="relative h-64">
-            <img 
-              src={parkingImage} 
-              alt="Parking Area"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent flex items-end">
-              <div className="p-6 w-full">
-                <h2 className="text-2xl font-bold mb-2">Smart Parking Solutions</h2>
-                <p className="text-muted-foreground">Real-time availability • Instant booking • QR-based entry</p>
-              </div>
-            </div>
-          </div>
-        </Card>
+      
 
         {/* Parking Areas Map */}
         <Card className="p-6 mb-6">

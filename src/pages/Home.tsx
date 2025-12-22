@@ -1,17 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { 
-  Car, 
-  Camera, 
-  MapPin, 
-  Users, 
-  Hotel, 
+import {
+  BadgeCheck,
+  CalendarRange,
+  Car,
+  Camera,
+  Clock,
+  Hotel,
+  MapPin,
   Navigation,
   Shield,
-  Clock
+  Smartphone,
+  Users,
 } from "lucide-react";
-import heroImage from "@/assets/hero-mountains.jpg";
+import heroImage from "@/assets/hero-mountains.png";
 
 const Home = () => {
   const features = [
@@ -41,56 +44,137 @@ const Home = () => {
     },
   ];
 
+  const quickHighlights = [
+    {
+      icon: CalendarRange,
+      title: "Next darshan window",
+      value: "Opens 6:00 AM",
+      detail: "Verified slots & staggered entry",
+    },
+    {
+      icon: Navigation,
+      title: "Road status",
+      value: "All routes open",
+      detail: "Weather-safe routes, live updates",
+    },
+    {
+      icon: Shield,
+      title: "Concierge support",
+      value: "24/7 helpline",
+      detail: "Human agents + AI triage",
+    },
+  ];
+
+  const journeySteps = [
+    {
+      icon: BadgeCheck,
+      title: "Plan & verify",
+      description: "Create your party, add IDs, and lock preferred dates.",
+    },
+    {
+      icon: Smartphone,
+      title: "Book essentials",
+      description: "Reserve parking, hourly passes, hotels, and taxis in one place.",
+    },
+    {
+      icon: Hotel,
+      title: "Arrive & stay",
+      description: "Smooth check-ins with QR codes and live slot visibility.",
+    },
+    {
+      icon: Shield,
+      title: "Travel with confidence",
+      description: "AI checkpoints, SOS visibility, and proactive alerts.",
+    },
+  ];
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#FAFAF8]">
       {/* Hero Section */}
       <section className="relative min-h-[700px] flex items-center justify-center overflow-hidden">
-        {/* Animated Background */}
+        {/* Background image with subtle white overlay */}
         <div className="absolute inset-0">
           <img
             src={heroImage}
             alt="Himalayan Mountains"
-            className="w-full h-full object-cover scale-110 animate-[scale_20s_ease-in-out_infinite]"
+            className="w-full h-full object-cover scale-100 animate-[scale_20s_ease-in-out_infinite]"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/60 to-background" />
-          <div className="absolute inset-0" style={{ background: 'var(--gradient-hero-radial)' }} />
-        </div>
-        
-        {/* Floating Elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-primary/20 rounded-full blur-3xl animate-float" />
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-secondary/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85))",
+            }}
+          />
         </div>
         
         <div className="relative z-10 container mx-auto px-4 text-center">
           <div className="mb-6 inline-block">
-            <div className="glass-effect px-6 py-2 rounded-full text-sm font-medium">
+            <div className="px-6 py-2 rounded-full text-sm font-medium bg-white/80 border border-[#E6E8EB] text-[#5F6C7B]">
               ✨ AI-Powered Smart Tourism Platform
             </div>
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            Welcome to <br />
-            <span className="gradient-text text-6xl md:text-8xl">Char Dham Yatra</span>
+          <h1 className="mb-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <span className="block text-xl md:text-2xl font-semibold text-[#5F6C7B] mb-2">
+              Welcome to
+            </span>
+            <span className="block text-4xl md:text-6xl lg:text-7xl font-bold text-[#1F3A5F]">
+              Char Dham Yatra
+            </span>
           </h1>
           
-          <p className="text-lg md:text-2xl text-foreground/80 mb-12 max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-6 duration-1000 leading-relaxed">
+          <p className="text-lg md:text-2xl text-[#5F6C7B] mb-12 max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-6 duration-1000 leading-relaxed">
             Your intelligent companion for a blessed pilgrimage. Experience seamless travel management with cutting-edge AI technology.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-6 justify-center animate-in fade-in slide-in-from-bottom-8 duration-1000">
             <Link to="/dashboard">
-              <Button size="lg" className="px-8 py-6 text-lg shadow-2xl hover:shadow-primary/50 transition-all hover:scale-105">
+              <Button
+                size="lg"
+                className="px-8 py-6 text-lg shadow-2xl transition-all hover:scale-105 bg-[#F57C00] hover:bg-[#E06900] text-white border-none"
+              >
                 <MapPin className="mr-2 h-6 w-6" />
                 Start Your Journey
               </Button>
             </Link>
             <Link to="/parking">
-              <Button size="lg" variant="outline" className="px-8 py-6 text-lg glass-effect hover:bg-white/20">
+              <Button
+                size="lg"
+                variant="outline"
+                className="px-8 py-6 text-lg border-[#1F3A5F] text-[#1F3A5F] bg-transparent hover:bg-[#1F3A5F]/5"
+              >
                 <Car className="mr-2 h-6 w-6" />
                 Book Parking
               </Button>
             </Link>
+          </div>
+
+          {/* Live snapshot strip */}
+          <div className="mt-14 grid gap-4 sm:grid-cols-3 max-w-5xl mx-auto">
+            {quickHighlights.map((item, index) => (
+              <Card
+                key={index}
+                className="p-5 bg-white border border-[#E6E8EB] shadow-sm text-left flex items-start gap-4 rounded-2xl"
+              >
+                <div className="p-3 rounded-2xl bg-[#FFF3E0]">
+                  <item.icon className="h-6 w-6 text-[#F57C00]" />
+                </div>
+                <div>
+                  <div className="text-sm text-[#8A8A8A] uppercase tracking-wide">
+                    {item.title}
+                  </div>
+                  <div
+                    className={`text-lg font-semibold ${
+                      item.title === "Road status" ? "text-[#2E7D32]" : "text-[#1E1E1E]"
+                    }`}
+                  >
+                    {item.value}
+                  </div>
+                  <div className="text-sm text-[#5F6C7B]">{item.detail}</div>
+                </div>
+              </Card>
+            ))}
           </div>
           
           {/* Stats Bar */}
@@ -101,10 +185,48 @@ const Home = () => {
               { value: "24/7", label: "Support" },
               { value: "AI", label: "Powered" },
             ].map((stat, i) => (
-              <div key={i} className="glass-effect p-4 rounded-2xl">
-                <div className="text-3xl font-bold gradient-text">{stat.value}</div>
-                <div className="text-sm text-foreground/70 mt-1">{stat.label}</div>
+              <div key={i} className="bg-white/80 border border-[#E6E8EB] p-4 rounded-2xl">
+                <div className="text-3xl font-bold text-[#1F3A5F]">{stat.value}</div>
+                <div className="text-sm text-[#5F6C7B] mt-1">{stat.label}</div>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Journey Planner */}
+      <section className="py-20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-background via-muted/40 to-background" />
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="max-w-3xl mx-auto text-center mb-14">
+            <p className="text-sm font-semibold text-primary bg-primary/10 px-4 py-2 rounded-full inline-block mb-4">
+              4 steps to a calmer yatra
+            </p>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              Plan, book, and travel with clarity
+            </h2>
+            <p className="text-lg text-muted-foreground">
+              A guided flow that keeps pilgrims, organizers, and authorities perfectly in sync.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-4 gap-6">
+            {journeySteps.map((step, index) => (
+              <Card
+                key={index}
+                className="p-6 h-full border-2 border-transparent hover:border-primary/20 transition-all"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/12 to-secondary/12">
+                    <step.icon className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="text-sm font-semibold text-muted-foreground">
+                    Step {index + 1}
+                  </div>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
+                <p className="text-muted-foreground leading-relaxed">{step.description}</p>
+              </Card>
             ))}
           </div>
         </div>
@@ -151,6 +273,62 @@ const Home = () => {
                 </Card>
               </Link>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Experience Split */}
+      <section className="py-20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/8 via-secondary/8 to-primary/8" />
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="grid md:grid-cols-2 gap-8">
+            <Card className="p-10 bg-gradient-to-br from-white to-primary/5 border-primary/10 shadow-xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
+                Pilgrim-first
+              </div>
+              <h3 className="text-3xl font-bold mb-4">Concierge-like journey</h3>
+              <p className="text-muted-foreground mb-6">
+                Reduce queue anxiety with transparent slots, offline-friendly QR passes, and live weather-aware guidance.
+              </p>
+              <ul className="space-y-3 text-muted-foreground">
+                <li className="flex items-start gap-3">
+                  <BadgeCheck className="h-5 w-5 text-primary mt-0.5" />
+                  One-tap parking & darshan QR codes
+                </li>
+                <li className="flex items-start gap-3">
+                  <BadgeCheck className="h-5 w-5 text-primary mt-0.5" />
+                  Gentle alerts for crowding, weather, and cut-off times
+                </li>
+                <li className="flex items-start gap-3">
+                  <BadgeCheck className="h-5 w-5 text-primary mt-0.5" />
+                  Human help desk blended with AI guidance
+                </li>
+              </ul>
+            </Card>
+
+            <Card className="p-10 bg-gradient-to-br from-white to-secondary/5 border-secondary/10 shadow-xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/10 text-secondary-foreground text-sm font-semibold mb-4">
+                Authority-ready
+              </div>
+              <h3 className="text-3xl font-bold mb-4">Operational visibility</h3>
+              <p className="text-muted-foreground mb-6">
+                Clear dashboards for authorities and organizers with AI validation on every checkpoint.
+              </p>
+              <ul className="space-y-3 text-muted-foreground">
+                <li className="flex items-start gap-3">
+                  <Shield className="h-5 w-5 text-secondary mt-0.5" />
+                  Verified rosters synced with group portals
+                </li>
+                <li className="flex items-start gap-3">
+                  <Camera className="h-5 w-5 text-secondary mt-0.5" />
+                  AI-powered vehicle detection at gates
+                </li>
+                <li className="flex items-start gap-3">
+                  <Navigation className="h-5 w-5 text-secondary mt-0.5" />
+                  Congestion-aware routing for fleets
+                </li>
+              </ul>
+            </Card>
           </div>
         </div>
       </section>

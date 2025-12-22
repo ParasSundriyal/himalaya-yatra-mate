@@ -6,6 +6,12 @@ const bookingSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  // Group reference - automatically set when member books
+  groupId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Group',
+    default: null
+  },
   bookingType: {
     type: String,
     enum: ['parking', 'hotel', 'taxi'],
@@ -78,6 +84,7 @@ const bookingSchema = new mongoose.Schema({
 bookingSchema.index({ user: 1, createdAt: -1 });
 bookingSchema.index({ status: 1 });
 bookingSchema.index({ bookingType: 1 });
+bookingSchema.index({ groupId: 1, createdAt: -1 });
 
 const Booking = mongoose.model('Booking', bookingSchema);
 

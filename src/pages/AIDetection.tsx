@@ -1,29 +1,145 @@
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Camera, 
-  Upload, 
-  Activity,
-  CheckCircle,
-  AlertCircle,
-  Clock
-} from "lucide-react";
-import aiDetectionImage from "@/assets/ai-detection.jpg";
+import { Activity, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { firebaseDb } from "@/lib/firebase";
+import { onValue, ref } from "firebase/database";
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
+
+type RawDetection = {
+  [key: string]: any;
+};
+
+type Detection = {
+  id: string;
+  plate: string;
+  meta: string;
+};
+
+const parseRawDetection = (id: string, value: RawDetection): Detection => {
+  // Your Realtime DB sample looked like:
+  // 0: some id, 1: plate, 2: "2025-12-15 21:59:04Frame: 2", 3: "NumberPlate02/NumberC/....png"
+  const plate = value["1"] ?? value[1] ?? "";
+  const meta = value["2"] ?? value[2] ?? "";
+
+  return {
+    id,
+    plate: String(plate),
+    meta: String(meta),
+  };
+};
 
 const AIDetection = () => {
-  const recentDetections = [
-    { plate: "UK 05 AB 1234", time: "2 mins ago", status: "Entry", location: "Gate 1" },
-    { plate: "UK 07 CD 5678", time: "5 mins ago", status: "Exit", location: "Gate 2" },
-    { plate: "HR 26 EF 9012", time: "8 mins ago", status: "Entry", location: "Gate 1" },
-    { plate: "DL 01 GH 3456", time: "12 mins ago", status: "Entry", location: "Gate 3" },
-    { plate: "UP 14 IJ 7890", time: "15 mins ago", status: "Exit", location: "Gate 2" },
-  ];
+  const [detections, setDetections] = useState<Detection[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Adjust this path if your detections are under a child like "detections/"
+    const detectionsRef = ref(firebaseDb, "/");
+
+    const unsubscribe = onValue(
+      detectionsRef,
+      (snapshot) => {
+        const val = snapshot.val();
+        if (!val) {
+          setDetections([]);
+          setLoading(false);
+          return;
+        }
+
+        let list: Detection[] = [];
+
+        // Case 1: multiple detections stored as child objects
+        if (typeof val === "object") {
+          Object.entries(val).forEach(([key, value]) => {
+            if (value && typeof value === "object") {
+              list.push(parseRawDetection(key, value as RawDetection));
+            }
+          });
+
+          // Case 2: single flat detection at the root (keys 0,1,2,3,...)
+          if (list.length === 0) {
+            list = [parseRawDetection("root", val as RawDetection)];
+          }
+        }
+
+        // Newest last key at bottom; reverse for "recent first"
+        setDetections(list.reverse());
+        setLoading(false);
+      },
+      () => {
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      // onValue returns an unsubscribe in modular SDK
+      unsubscribe();
+    };
+  }, []);
+
+  const todayKey = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`; // matches prefix in meta (YYYY-MM-DD ...)
+  }, []);
+
+  const { totalDetections, todayDetections, activeVehiclesToday } = useMemo(() => {
+    let total = detections.length;
+    let todayCount = 0;
+    const todayPlates = new Set<string>();
+
+    detections.forEach((d) => {
+      const match = d.meta.match(/^(\d{4}-\d{2}-\d{2})/);
+      const dateKey = match ? match[1] : "";
+      if (dateKey === todayKey) {
+        todayCount += 1;
+        if (d.plate) {
+          todayPlates.add(d.plate);
+        }
+      }
+    });
+
+    return {
+      totalDetections: total,
+      todayDetections: todayCount,
+      activeVehiclesToday: todayPlates.size,
+    };
+  }, [detections, todayKey]);
+
+  const timelineData = useMemo(() => {
+    const counts: Record<string, number> = {};
+
+    detections.forEach((d) => {
+      const match = d.meta.match(/^(\d{4}-\d{2}-\d{2})/);
+      const key = match ? match[1] : "Unknown";
+      counts[key] = (counts[key] || 0) + 1;
+    });
+
+    return Object.entries(counts)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, value]) => ({
+        date,
+        detections: value,
+      }));
+  }, [detections]);
 
   const stats = [
-    { label: "Total Detections Today", value: "1,247", icon: Activity, color: "text-primary" },
-    { label: "Active Vehicles", value: "342", icon: CheckCircle, color: "text-secondary" },
-    { label: "Pending Reviews", value: "8", icon: AlertCircle, color: "text-destructive" },
+    { label: "AI Detections", value: todayDetections.toString(), icon: Activity, color: "text-primary" },
+    { label: "Active vehicles (today)", value: activeVehiclesToday.toString(), icon: CheckCircle, color: "text-secondary" },
+    { label: "Total detections (all time)", value: totalDetections.toString(), icon: AlertCircle, color: "text-muted-foreground" },
     { label: "Average Processing", value: "0.3s", icon: Clock, color: "text-muted-foreground" },
   ];
 
@@ -52,72 +168,88 @@ const AIDetection = () => {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Live Feed */}
+          {/* Traffic-style timeline chart */}
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <Camera className="h-5 w-5 text-primary" />
-                Live CCTV Feed
-              </h2>
+              <div>
+                <h2 className="text-xl font-semibold">Detection Timeline</h2>
+                <p className="text-xs text-muted-foreground">
+                  Daily count of plates detected from Firebase Realtime Database
+                </p>
+              </div>
               <Badge variant="outline" className="bg-secondary/10">
-                <Activity className="h-3 w-3 mr-1 animate-pulse" />
                 Live
               </Badge>
             </div>
-            
-            <div className="relative aspect-video bg-muted rounded-lg overflow-hidden mb-4">
-              <img 
-                src={aiDetectionImage} 
-                alt="AI Detection Dashboard"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute top-4 left-4 bg-background/90 backdrop-blur-sm px-3 py-1 rounded-md text-sm">
-                Gate 1 - Main Entry
-              </div>
-            </div>
 
-            <div className="flex gap-3">
-              <Button className="flex-1">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Image
-              </Button>
-              <Button variant="outline" className="flex-1">
-                <Camera className="h-4 w-4 mr-2" />
-                Connect Camera
-              </Button>
-            </div>
+            {loading ? (
+              <p className="text-sm text-muted-foreground">
+                Loading chart data…
+              </p>
+            ) : timelineData.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No detections to visualize yet.
+              </p>
+            ) : (
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={timelineData} margin={{ left: -10, right: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar
+                      dataKey="detections"
+                      name="Detections"
+                      barSize={24}
+                      radius={[4, 4, 0, 0]}
+                      fill="#1F3A5F"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="detections"
+                      name="Trend"
+                      stroke="#F57C00"
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </Card>
 
           {/* Recent Detections */}
           <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Recent Detections</h2>
+            <h2 className="text-xl font-semibold mb-4">Recent Detections (Firebase)</h2>
             
-            <div className="space-y-3">
-              {recentDetections.map((detection, index) => (
-                <div 
-                  key={index}
-                  className="flex items-center justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
-                >
-                  <div className="flex-1">
-                    <div className="font-semibold text-lg mb-1">
-                      {detection.plate}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {detection.location} • {detection.time}
-                    </div>
-                  </div>
-                  <Badge 
-                    variant={detection.status === "Entry" ? "default" : "secondary"}
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Loading detections from Firebase…</p>
+            ) : detections.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No detections available yet.</p>
+            ) : (
+              <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                {detections.map((detection) => (
+                  <div
+                    key={detection.id}
+                    className="flex items-start justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
                   >
-                    {detection.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-
-            <Button variant="outline" className="w-full mt-4">
-              View All Detections
-            </Button>
+                    <div className="flex-1 mr-3">
+                      <div className="font-semibold text-lg mb-1">
+                        {detection.plate || "Unknown plate"}
+                      </div>
+                      <div className="text-xs text-muted-foreground break-words">
+                        {detection.meta}
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      ID: {detection.id}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
         </div>
 

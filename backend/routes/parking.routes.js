@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import Parking from '../models/Parking.model.js';
 import Booking from '../models/Booking.model.js';
 import Group from '../models/Group.model.js';
+import User from '../models/User.model.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 import QRCode from 'qrcode';
 
@@ -158,9 +159,38 @@ router.post('/book', authenticate, [
     const days = Math.ceil(hours / 24);
     const amount = slot.pricePerDay * days;
 
+    // Find group if user is a member (has instructorId OR is in a group's members array)
+    let groupId = null;
+    if (bookingUserId) {
+      const bookingUser = await User.findById(bookingUserId);
+      if (bookingUser) {
+        // Method 1: Check if user has instructorId
+        if (bookingUser.instructorId) {
+          const userGroup = await Group.findOne({ instructor: bookingUser.instructorId });
+          if (userGroup) {
+            groupId = userGroup._id;
+          }
+        }
+        
+        // Method 2: If no instructorId, check if user is in any group's members array
+        if (!groupId) {
+          const userGroup = await Group.findOne({ members: bookingUserId });
+          if (userGroup) {
+            groupId = userGroup._id;
+            // Also set instructorId for future bookings
+            if (!bookingUser.instructorId) {
+              bookingUser.instructorId = userGroup.instructor;
+              await bookingUser.save();
+            }
+          }
+        }
+      }
+    }
+
     // Create booking
     const booking = new Booking({
       user: bookingUserId,
+      groupId: groupId,
       bookingType: 'parking',
       status: 'confirmed',
       parking: {

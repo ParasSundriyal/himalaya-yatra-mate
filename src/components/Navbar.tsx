@@ -11,7 +11,6 @@ const Navbar = () => {
 
   const publicNavItems = [
     { name: "Home", path: "/" },
-    { name: "AI Vehicle Detection", path: "/ai-detection" },
     { name: "Parking Booking", path: "/parking" },
     { name: "Hourly Pass", path: "/hourly-pass" },
   ];
@@ -26,6 +25,7 @@ const Navbar = () => {
 
   const adminNavItems = [
     { name: "Admin Dashboard", path: "/admin" },
+    { name: "AI Vehicle Detection", path: "/ai-detection" },
     { name: "Hourly Pass Admin", path: "/admin/hourly-passes" },
   ];
 
@@ -47,17 +47,15 @@ const Navbar = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <nav className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border shadow-sm">
+    <nav className="sticky top-0 z-50 bg-[#FAFAF8] backdrop-blur-md border-b border-[#E6E8EB] shadow-sm">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="p-2 bg-gradient-to-br from-primary to-secondary rounded-lg shadow-md group-hover:shadow-lg transition-all">
-              <Mountain className="h-6 w-6 text-primary-foreground" />
+            <div className="p-2 rounded-lg border border-[#E6E8EB] bg-white group-hover:shadow-md transition-all">
+              <Mountain className="h-6 w-6 text-[#1F3A5F]" />
             </div>
-            <span className="font-bold text-xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Char Dham Yatra
-            </span>
+            <span className="font-semibold text-xl text-[#1F3A5F]">Char Dham Yatra</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -65,9 +63,14 @@ const Navbar = () => {
             {navItems.map((item) => (
               <Link key={item.path} to={item.path}>
                 <Button
-                  variant={isActive(item.path) ? "default" : "ghost"}
+                  variant="ghost"
                   size="sm"
-                  className="font-medium"
+                  className={`font-medium px-4 border-b-2 border-transparent rounded-none bg-transparent
+                    ${
+                      isActive(item.path)
+                        ? "text-[#F57C00] border-[#F57C00]"
+                        : "text-[#5F6C7B] hover:text-[#1F3A5F]"
+                    }`}
                 >
                   {item.name}
                 </Button>
@@ -93,14 +96,21 @@ const Navbar = () => {
               </div>
             ) : (
               <div className="flex items-center gap-2 ml-2">
-                <Link to="/signup">
-                  <Button variant="outline" size="sm">
-                    Sign Up
+                <Link to="/login">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-[#1F3A5F] text-[#1F3A5F] bg-transparent hover:bg-[#1F3A5F]/5"
+                  >
+                    Login
                   </Button>
                 </Link>
-                <Link to="/login">
-                  <Button size="sm">
-                    Login
+                <Link to="/signup">
+                  <Button
+                    size="sm"
+                    className="bg-[#F57C00] hover:bg-[#E06900] text-white border-none shadow-sm"
+                  >
+                    Sign Up
                   </Button>
                 </Link>
               </div>
@@ -162,14 +172,17 @@ const Navbar = () => {
                 </>
               ) : (
                 <div className="flex flex-col gap-2 mt-2">
-                  <Link to="/signup" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="outline" className="w-full">
-                      Sign Up
+                  <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
+                    <Button
+                      variant="outline"
+                      className="w-full border-[#1F3A5F] text-[#1F3A5F] bg-transparent hover:bg-[#1F3A5F]/5"
+                    >
+                      Login
                     </Button>
                   </Link>
-                  <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full">
-                      Login
+                  <Link to="/signup" onClick={() => setMobileMenuOpen(false)}>
+                    <Button className="w-full bg-[#F57C00] hover:bg-[#E06900] text-white border-none shadow-sm">
+                      Sign Up
                     </Button>
                   </Link>
                 </div>

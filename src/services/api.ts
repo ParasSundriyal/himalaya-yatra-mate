@@ -604,7 +604,7 @@ export const api = {
       return response.json();
     },
 
-    // Book a pass (public - no auth required, but optional)
+    // Book a pass (public - no auth required, but optional, or for group member if instructor)
     book: async (data: {
       checkpointId: string;
       date: string;
@@ -613,6 +613,7 @@ export const api = {
       vehicleOwnerPhone: string;
       vehicleNumber: string;
       numberOfPeople?: number;
+      memberId?: string; // Optional: for group instructors booking for members
     }) => {
       const response = await apiRequest('/hourly-passes/book', {
         method: 'POST',

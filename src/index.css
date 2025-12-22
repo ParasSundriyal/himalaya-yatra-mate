@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,118 +10,117 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Himalayan-inspired color palette */
-    --background: 210 20% 98%;
-    --foreground: 215 25% 15%;
+    /* Cool Himalayan blue / orange palette */
+    /* Background: Soft Slate – #F8FAFC */
+    --background: 210 40% 98%;
+    /* Text: Near-black – #111827 */
+    --foreground: 222 47% 11%;
 
+    /* Card / Surface: Pure White – #FFFFFF */
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
+    --popover-foreground: 0 0% 17%;
 
-    /* Sky Blue - Primary */
-    --primary: 217 91% 60%;
+    /* Primary: Deep Blue – #1F4E79 */
+    --primary: 210 59% 30%;
     --primary-foreground: 0 0% 100%;
-    --primary-light: 217 91% 75%;
-    --primary-dark: 217 91% 45%;
+    --primary-light: 210 59% 38%;
+    --primary-dark: 210 59% 22%;
 
-    /* Forest Green - Secondary */
-    --secondary: 158 64% 52%;
+    /* Secondary: Lighter Blue – #3A6EA5 */
+    --secondary: 211 48% 43%;
     --secondary-foreground: 0 0% 100%;
-    --secondary-light: 158 64% 67%;
+    --secondary-light: 211 48% 53%;
     
-    /* Mountain Grey - Muted */
-    --muted: 215 15% 92%;
+    /* Muted text / subtle surfaces */
+    --muted: 210 40% 96%;
+    /* Text Muted: #6B7280 */
     --muted-foreground: 215 16% 47%;
 
-    /* Snow White - Accent */
-    --accent: 210 20% 96%;
-    --accent-foreground: 215 25% 15%;
+    /* Accent: Warm Orange – #E36414 */
+    --accent: 24 82% 49%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 215 20% 88%;
-    --input: 215 20% 88%;
-    --ring: 217 91% 60%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 210 59% 30%;
 
     --radius: 0.75rem;
     
-    /* Custom gradients */
-    --gradient-sky: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(217 91% 75%) 100%);
-    --gradient-mountain: linear-gradient(180deg, hsl(210 20% 98%) 0%, hsl(215 15% 92%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(158 64% 52%) 100%);
-    --gradient-hero-radial: radial-gradient(ellipse at top, hsl(217 91% 60% / 0.3), transparent 50%),
-                            radial-gradient(ellipse at bottom, hsl(158 64% 52% / 0.2), transparent 50%);
+    /* Custom gradients based on primary / secondary / accent */
+    --gradient-sky: linear-gradient(135deg, hsl(210 59% 30%) 0%, hsl(211 48% 43%) 50%, hsl(24 82% 49%) 100%);
+    --gradient-mountain: linear-gradient(180deg, hsl(210 40% 98%) 0%, hsl(210 40% 96%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(210 59% 30%) 0%, hsl(24 82% 49%) 100%);
+    --gradient-hero-radial: radial-gradient(ellipse at top, hsl(210 59% 30% / 0.35), transparent 55%),
+                            radial-gradient(ellipse at bottom, hsl(24 82% 49% / 0.25), transparent 55%);
     --gradient-card: linear-gradient(135deg, hsl(0 0% 100% / 0.9), hsl(0 0% 100% / 0.6));
     --gradient-glass: linear-gradient(135deg, hsl(0 0% 100% / 0.1), hsl(0 0% 100% / 0.05));
     
-    /* Shadows */
-    --shadow-soft: 0 4px 6px -1px hsl(217 91% 60% / 0.1), 0 2px 4px -1px hsl(217 91% 60% / 0.06);
-    --shadow-medium: 0 10px 15px -3px hsl(217 91% 60% / 0.1), 0 4px 6px -2px hsl(217 91% 60% / 0.05);
-    --shadow-large: 0 20px 25px -5px hsl(217 91% 60% / 0.1), 0 10px 10px -5px hsl(217 91% 60% / 0.04);
-    --shadow-glow: 0 0 40px hsl(217 91% 60% / 0.3), 0 0 20px hsl(217 91% 60% / 0.2);
-    --shadow-elevated: 0 25px 50px -12px hsl(217 91% 60% / 0.25);
+    /* Shadows tuned for cool blue theme */
+    --shadow-soft: 0 4px 6px -1px hsl(210 59% 30% / 0.14), 0 2px 4px -1px hsl(210 59% 30% / 0.08);
+    --shadow-medium: 0 10px 15px -3px hsl(210 59% 30% / 0.16), 0 4px 6px -2px hsl(210 59% 30% / 0.08);
+    --shadow-large: 0 20px 25px -5px hsl(210 59% 30% / 0.16), 0 10px 10px -5px hsl(210 59% 30% / 0.08);
+    --shadow-glow: 0 0 40px hsl(210 59% 30% / 0.4), 0 0 20px hsl(24 82% 49% / 0.25);
+    --shadow-elevated: 0 25px 50px -12px hsl(210 59% 30% / 0.3);
     
     /* Transitions */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-slow: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 210 40% 98%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 210 59% 30%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 24 82% 49%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 210 59% 30%;
   }
 
   .dark {
-    --background: 215 25% 12%;
-    --foreground: 210 20% 98%;
+    /* Dark mode variant of sunrise theme */
+    --background: 210 30% 12%;
+    --foreground: 0 0% 100%;
 
-    --card: 215 25% 15%;
-    --card-foreground: 210 20% 98%;
+    --card: 210 30% 16%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 215 25% 15%;
-    --popover-foreground: 210 20% 98%;
+    --popover: 210 30% 16%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 217 91% 60%;
+    --primary: 27 100% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 158 64% 52%;
+    --secondary: 340 82% 55%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 215 25% 20%;
-    --muted-foreground: 215 15% 65%;
+    --muted: 210 20% 22%;
+    --muted-foreground: 0 0% 92%;
 
-    --accent: 215 25% 20%;
-    --accent-foreground: 210 20% 98%;
+    --accent: 0 0% 100%;
+    --accent-foreground: 210 30% 12%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 215 25% 25%;
-    --input: 215 25% 25%;
-    --ring: 217 91% 60%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --border: 210 20% 28%;
+    --input: 210 20% 28%;
+    --ring: 27 100% 60%;
+
+    --sidebar-background: 210 30% 12%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 27 100% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 340 82% 55%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 210 20% 28%;
+    --sidebar-ring: 27 100% 60%;
   }
 }
 
@@ -130,12 +131,17 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Open Sans', sans-serif;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Poppins', sans-serif;
   }
 }
 
 @layer utilities {
   .glass-effect {
-    @apply backdrop-blur-xl bg-white/10 border border-white/20;
+    @apply backdrop-blur-md bg-white/15 border border-white/25;
   }
   
   .card-hover {

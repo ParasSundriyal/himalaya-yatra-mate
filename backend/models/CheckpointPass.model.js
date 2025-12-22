@@ -7,6 +7,12 @@ const checkpointPassSchema = new mongoose.Schema({
     required: false, // Optional for generic passes
     default: null
   },
+  // Group reference - automatically set when member books
+  groupId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Group',
+    default: null
+  },
   checkpoint: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Checkpoint',
@@ -117,6 +123,7 @@ checkpointPassSchema.index({ status: 1 });
 checkpointPassSchema.index({ 'timeSlot.start': 1, 'timeSlot.end': 1 });
 checkpointPassSchema.index({ vehicleNumber: 1, checkpoint: 1, status: 1 });
 checkpointPassSchema.index({ vehicleOwnerPhone: 1 });
+checkpointPassSchema.index({ groupId: 1, createdAt: -1 });
 
 // Method to check if pass is currently valid
 checkpointPassSchema.methods.isValid = function() {

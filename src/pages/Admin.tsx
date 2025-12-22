@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import ParkingAdmin from "./ParkingAdmin";
 import api from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import { firebaseDb } from "@/lib/firebase";
+import { onValue, ref } from "firebase/database";
 
 interface AdminStats {
   users: {
@@ -165,6 +167,10 @@ const Admin = () => {
   // Activities
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
+
+  // AI detection stats from Firebase
+  const [aiTodayDetections, setAiTodayDetections] = useState(0);
+  const [aiActiveVehicles, setAiActiveVehicles] = useState(0);
 
   // Fetch stats
   const fetchStats = async () => {
@@ -309,6 +315,81 @@ const Admin = () => {
     loadData();
   }, []);
 
+  // Today key for comparison (YYYY-MM-DD)
+  const todayKey = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, []);
+
+  // Subscribe to Firebase for AI detection counts (realtime)
+  useEffect(() => {
+    const detectionsRef = ref(firebaseDb, "/");
+
+    const unsubscribe = onValue(
+      detectionsRef,
+      (snapshot) => {
+        const val = snapshot.val();
+        if (!val) {
+          setAiTodayDetections(0);
+          setAiActiveVehicles(0);
+          return;
+        }
+
+        type Raw = { [key: string]: any };
+        const parse = (id: string, value: Raw) => {
+          const plate = value["1"] ?? value[1] ?? "";
+          const meta = value["2"] ?? value[2] ?? "";
+          return {
+            id,
+            plate: String(plate),
+            meta: String(meta),
+          };
+        };
+
+        let detections: { id: string; plate: string; meta: string }[] = [];
+
+        if (typeof val === "object") {
+          Object.entries(val).forEach(([key, value]) => {
+            if (value && typeof value === "object") {
+              detections.push(parse(key, value as Raw));
+            }
+          });
+
+          if (detections.length === 0) {
+            detections = [parse("root", val as Raw)];
+          }
+        }
+
+        let todayCount = 0;
+        const platesToday = new Set<string>();
+
+        detections.forEach((d) => {
+          const match = d.meta.match(/^(\d{4}-\d{2}-\d{2})/);
+          const dateKey = match ? match[1] : "";
+          if (dateKey === todayKey) {
+            todayCount += 1;
+            if (d.plate) {
+              platesToday.add(d.plate);
+            }
+          }
+        });
+
+        setAiTodayDetections(todayCount);
+        setAiActiveVehicles(platesToday.size);
+      },
+      (error) => {
+        console.error("Firebase AI detection subscription error:", error);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [todayKey]);
+
   // Fetch users when filters or page changes
   useEffect(() => {
     fetchUsers();
@@ -446,10 +527,10 @@ const Admin = () => {
                 </div>
                 <Badge variant="secondary">Today</Badge>
               </div>
-              <div className="text-2xl font-bold mb-1">{stats.aiDetection.todayDetections}</div>
+              <div className="text-2xl font-bold mb-1">{aiTodayDetections}</div>
               <div className="text-sm text-muted-foreground">AI Detections</div>
               <div className="text-xs text-muted-foreground mt-2">
-                {stats.aiDetection.activeVehicles} active vehicles
+                {aiActiveVehicles} active vehicles
               </div>
             </Card>
           </div>
