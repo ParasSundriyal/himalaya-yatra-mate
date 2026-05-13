@@ -30,10 +30,62 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'group', 'admin'],
     default: 'user'
   },
+  /** Legacy plain Aadhaar — prefer `aadhaarHash` only for new registrations */
   aadhar: {
     type: String,
-    sparse: true, // Allows multiple null values
+    sparse: true,
     match: [/^[0-9]{12}$/, 'Aadhar must be 12 digits']
+  },
+  /** SHA-256 hex of 12-digit Aadhaar (never store plain Aadhaar) */
+  aadhaarHash: {
+    type: String,
+    sparse: true,
+    select: false,
+  },
+  pilgrimId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true,
+  },
+  firebaseUid: {
+    type: String,
+    sparse: true,
+    index: true,
+  },
+  gender: {
+    type: String,
+    enum: ['male', 'female', 'other', 'prefer_not_say'],
+  },
+  homeState: {
+    type: String,
+    trim: true,
+  },
+  emergencyContact: {
+    name: { type: String, trim: true },
+    phone: { type: String, match: [/^[0-9]{10}$/, 'Emergency phone must be 10 digits'] },
+  },
+  healthConditions: [{
+    type: String,
+    enum: ['heart', 'bp', 'knee', 'asthma', 'diabetes', 'pregnancy', 'none'],
+  }],
+  fitnessLevel: {
+    type: String,
+    enum: ['low', 'moderate', 'active'],
+  },
+  vehicle: {
+    vehicleType: { type: String, trim: true },
+    registrationNumber: { type: String, trim: true },
+    passengers: { type: Number, min: 0, max: 20 },
+  },
+  groupInfo: {
+    name: { type: String, trim: true },
+    size: { type: Number, min: 1 },
+    pinHash: { type: String }, // store bcrypt hash if you generate PIN
+  },
+  registrationCompleted: {
+    type: Boolean,
+    default: false,
   },
   photo: {
     type: String, // store base64 or URL

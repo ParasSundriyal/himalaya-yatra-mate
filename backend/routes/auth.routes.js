@@ -82,7 +82,12 @@ router.post('/register', [
         phone: user.phone,
         role: user.role,
         photo: user.photo,
-        aadhar: user.aadhar
+        aadhar: user.aadhar,
+        pilgrimId: user.pilgrimId,
+        registrationCompleted: !!user.registrationCompleted,
+        homeState: user.homeState,
+        healthConditions: user.healthConditions,
+        fitnessLevel: user.fitnessLevel,
       }
     });
   } catch (error) {
@@ -148,7 +153,12 @@ router.post('/login', [
         phone: user.phone,
         role: user.role,
         photo: user.photo,
-        aadhar: user.aadhar
+        aadhar: user.aadhar,
+        pilgrimId: user.pilgrimId,
+        registrationCompleted: !!user.registrationCompleted,
+        homeState: user.homeState,
+        healthConditions: user.healthConditions,
+        fitnessLevel: user.fitnessLevel,
       }
     });
   } catch (error) {

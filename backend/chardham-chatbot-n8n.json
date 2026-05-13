@@ -1,0 +1,293 @@
+{
+    "name": "Chardham Hybrid Chatbot",
+    "nodes": [
+      {
+        "parameters": {
+          "path": "chardham-chat",
+          "httpMethod": "POST",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "id": "Webhook_1",
+        "name": "Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          220,
+          280
+        ],
+        "webhookId": "chardham-chat"
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": false,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{$json.intent}}",
+                      "rightValue": "weather",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "weather"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": false,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{$json.intent}}",
+                      "rightValue": "route",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "route"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": false,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{$json.intent}}",
+                      "rightValue": "traffic",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "traffic"
+              }
+            ]
+          },
+          "fallbackOutput": "extra"
+        },
+        "id": "Switch_Intent",
+        "name": "Switch Intent",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3,
+        "position": [
+          460,
+          280
+        ]
+      },
+      {
+        "parameters": {
+          "url": "https://api.open-meteo.com/v1/forecast?latitude=30.7346&longitude=79.0669&current_weather=true",
+          "options": {}
+        },
+        "id": "HTTP_Weather",
+        "name": "OpenMeteo Weather",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          730,
+          130
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "let lang = 'en';\ntry {\n  lang =\n    ($('Webhook').first().json?.language ||\n      $('Webhook1').first().json?.language ||\n      'en');\n} catch (e) {\n  lang = 'en';\n}\n\nconst temp = $input.first().json?.current_weather?.temperature ?? 'N/A';\n\nreturn [{\n  json: {\n    intent: 'weather',\n    reply: lang === 'hi'\n      ? `वर्तमान तापमान ${temp}°C है`\n      : `Current temperature is ${temp}°C`,\n  }\n}];"
+        },
+        "id": "Code_WeatherReply",
+        "name": "Format Weather Reply",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          980,
+          130
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "let lang = 'en';\ntry {\n  lang =\n    ($('Webhook').first().json?.language ||\n      $('Webhook1').first().json?.language ||\n      'en');\n} catch (e) {\n  lang = 'en';\n}\n\nreturn [{\n  json: {\n    intent: 'route',\n    reply: lang === 'hi'\n      ? 'दूरी लगभग 220 किमी है और यात्रा में करीब 8 घंटे लगते हैं।'\n      : 'Distance is ~220 km and takes around 8 hours.',\n  }\n}];"
+        },
+        "id": "Code_RouteReply",
+        "name": "Format Route Reply",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          730,
+          280
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "let lang = 'en';\ntry {\n  lang =\n    ($('Webhook').first().json?.language ||\n      $('Webhook1').first().json?.language ||\n      'en');\n} catch (e) {\n  lang = 'en';\n}\n\nreturn [{\n  json: {\n    intent: 'traffic',\n    reply: lang === 'hi'\n      ? 'सड़क और मौसम की स्थिति के कारण यात्रा समय बदल सकता है।'\n      : 'Travel time may vary due to road and weather conditions.',\n  }\n}];"
+        },
+        "id": "Code_TrafficReply",
+        "name": "Format Traffic Reply",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          730,
+          430
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "let lang = 'en';\ntry {\n  lang =\n    ($('Webhook').first().json?.language ||\n      $('Webhook1').first().json?.language ||\n      'en');\n} catch (e) {\n  lang = 'en';\n}\n\nreturn [{\n  json: {\n    intent: 'unknown',\n    reply: lang === 'hi'\n      ? 'इस समय डायनेमिक जानकारी उपलब्ध नहीं है।'\n      : 'Dynamic data is not available for this intent right now.',\n  }\n}];"
+        },
+        "id": "Code_DefaultReply",
+        "name": "Default Dynamic Reply",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          730,
+          580
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{$input.first().json}}",
+          "options": {}
+        },
+        "id": "Respond_1",
+        "name": "Respond to Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          1210,
+          280
+        ]
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Switch Intent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Switch Intent": {
+        "main": [
+          [
+            {
+              "node": "OpenMeteo Weather",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Format Route Reply",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Format Traffic Reply",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Default Dynamic Reply",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenMeteo Weather": {
+        "main": [
+          [
+            {
+              "node": "Format Weather Reply",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Weather Reply": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Route Reply": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Traffic Reply": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Default Dynamic Reply": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "active": true,
+    "settings": {},
+    "versionId": "1"
+  }

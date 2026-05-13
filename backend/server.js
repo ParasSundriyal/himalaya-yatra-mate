@@ -12,9 +12,24 @@ import aiDetectionRoutes from './routes/aiDetection.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import checkpointRoutes from './routes/checkpoint.routes.js';
 import hourlyPassRoutes from './routes/hourlyPass.routes.js';
+import chatbotRoutes from './routes/chatbot.routes.js';
+import passesRoutes from './routes/passes.routes.js';
+import registrationRoutes from './routes/registration.routes.js';
+import itineraryRoutes from './routes/itinerary.routes.js';
+import dashboardRoutes from './routes/dashboard.routes.js';
+import locationRoutes from './routes/location.routes.js';
+import crowdRoutes from './routes/crowd.routes.js';
+import mapsRoutes from './routes/maps.js';
+import { bootstrapFirebaseAdmin } from './services/firebaseAdmin.js';
+import { scheduleScraperCron } from './services/scraperService.js';
+import {
+  scheduleCrowdBlendCron,
+  updateCrowdFirestore,
+} from './services/crowdBlender.js';
 
 // Load environment variables
 dotenv.config();
+bootstrapFirebaseAdmin();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -63,14 +78,25 @@ if (!process.env.MONGODB_URI) {
   console.warn('   Please set MONGODB_URI in .env file for MongoDB Atlas connection');
 }
 
-mongoose.connect(MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose
+  .connect(MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => {
     console.log('✅ MongoDB connected successfully');
     console.log('📊 Database:', mongoose.connection.name);
     console.log('🌐 Host:', mongoose.connection.host);
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
+      scheduleScraperCron();
+      scheduleCrowdBlendCron();
+      updateCrowdFirestore().catch((e) =>
+        console.error('[startup] updateCrowdFirestore:', e.message),
+      );
+    });
   })
   .catch((err) => {
     console.error('❌ MongoDB connection error:');
@@ -103,6 +129,14 @@ app.use('/api/ai-detection', aiDetectionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/checkpoints', checkpointRoutes);
 app.use('/api/hourly-passes', hourlyPassRoutes);
+app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/passes', passesRoutes);
+app.use('/api/registration', registrationRoutes);
+app.use('/api/itinerary', itineraryRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/location', locationRoutes);
+app.use('/api/crowd', crowdRoutes);
+app.use('/api/maps', mapsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -118,8 +152,3 @@ app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
-});

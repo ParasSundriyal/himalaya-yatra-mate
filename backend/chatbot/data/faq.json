@@ -1,0 +1,102 @@
+{
+  "kedarnath_route": {
+    "en": "For Kedarnath, reach Gaurikund by road via Rishikesh-Rudraprayag-Sonprayag, then trek about 16-18 km to the temple.",
+    "hi": "केदारनाथ जाने के लिए पहले सड़क मार्ग से गौरीकुंड पहुंचें (ऋषिकेश-रुद्रप्रयाग-सोनप्रयाग), फिर लगभग 16-18 किमी ट्रेक करके मंदिर पहुंचें।"
+  },
+  "badrinath_route": {
+    "en": "Badrinath is connected by road from Rishikesh via Devprayag, Srinagar, Rudraprayag, Karnaprayag, Joshimath, and then Badrinath.",
+    "hi": "बद्रीनाथ सड़क मार्ग से ऋषिकेश से देवप्रयाग, श्रीनगर, रुद्रप्रयाग, कर्णप्रयाग, जोशीमठ होते हुए पहुंचा जाता है।"
+  },
+  "gangotri_route": {
+    "en": "For Gangotri, travel by road from Rishikesh to Uttarkashi and then to Gangotri. The route is mostly motorable.",
+    "hi": "गंगोत्री के लिए ऋषिकेश से उत्तरकाशी और फिर गंगोत्री तक सड़क मार्ग उपलब्ध है। अधिकांश रास्ता वाहन से तय होता है।"
+  },
+  "yamunotri_route": {
+    "en": "For Yamunotri, go to Janki Chatti by road, then trek around 5-6 km to reach Yamunotri temple.",
+    "hi": "यमुनोत्री के लिए पहले जानकीचट्टी तक सड़क से जाएं, फिर लगभग 5-6 किमी ट्रेक करके मंदिर पहुंचें।"
+  },
+  "best_time": {
+    "en": "Best time for Char Dham Yatra is May to June and September to October when weather is relatively stable.",
+    "hi": "चारधाम यात्रा का सबसे अच्छा समय मई-जून और सितंबर-अक्टूबर माना जाता है, जब मौसम अपेक्षाकृत स्थिर रहता है।"
+  },
+  "weather": {
+    "en": "Weather changes quickly in the Himalayas. Carry warm layers and rain protection even in summer.",
+    "hi": "हिमालय में मौसम जल्दी बदलता है। गर्म कपड़े और रेनकोट/छाता गर्मियों में भी साथ रखें।"
+  },
+  "registration": {
+    "en": "Char Dham registration is usually mandatory. Complete online or offline registration before starting your trip.",
+    "hi": "चारधाम यात्रा के लिए पंजीकरण आमतौर पर अनिवार्य होता है। यात्रा शुरू करने से पहले ऑनलाइन या ऑफलाइन रजिस्ट्रेशन करें।"
+  },
+  "kedarnath_trek": {
+    "en": "Kedarnath trek from Gaurikund is steep in sections. Start early, stay hydrated, and pace yourself.",
+    "hi": "गौरीकुंड से केदारनाथ ट्रेक कुछ हिस्सों में कठिन चढ़ाई वाला है। सुबह जल्दी शुरू करें, पानी पिएं और धीरे-धीरे चलें।"
+  },
+  "yamunotri_trek": {
+    "en": "Yamunotri trek is shorter but can still be demanding. Ponies and palki options are available from Janki Chatti.",
+    "hi": "यमुनोत्री ट्रेक छोटा है, लेकिन मेहनत वाला हो सकता है। जानकीचट्टी से घोड़ा और पालकी की सुविधा उपलब्ध रहती है।"
+  },
+  "temple_timing": {
+    "en": "Temple timings vary by season. Usually morning and evening darshan slots are available; confirm locally before visit.",
+    "hi": "मंदिर के समय मौसम के अनुसार बदलते हैं। सामान्यतः सुबह और शाम दर्शन होते हैं; जाने से पहले स्थानीय जानकारी जरूर लें।"
+  },
+  "safety": {
+    "en": "Travel in daylight, monitor weather alerts, avoid risky shortcuts, and keep emergency contacts handy.",
+    "hi": "दिन में यात्रा करें, मौसम अलर्ट देखें, जोखिम भरे शॉर्टकट से बचें और आपातकालीन नंबर साथ रखें।"
+  },
+  "altitude": {
+    "en": "High altitude can cause headache or breathlessness. Ascend gradually, rest well, and seek help if symptoms worsen.",
+    "hi": "ऊंचाई पर सिरदर्द या सांस फूलना हो सकता है। धीरे-धीरे चढ़ें, पर्याप्त आराम करें और परेशानी बढ़ने पर तुरंत मदद लें।"
+  },
+  "network": {
+    "en": "Mobile network is patchy in many stretches. Download maps and keep key details offline before departure.",
+    "hi": "कई क्षेत्रों में मोबाइल नेटवर्क कमजोर रहता है। निकलने से पहले मैप और जरूरी जानकारी ऑफलाइन सेव कर लें।"
+  },
+  "food": {
+    "en": "Simple vegetarian food is widely available on main routes. Carry light snacks and safe drinking water.",
+    "hi": "मुख्य मार्गों पर साधारण शाकाहारी भोजन आसानी से मिलता है। हल्के स्नैक्स और सुरक्षित पीने का पानी साथ रखें।"
+  },
+  "stay": {
+    "en": "You can find hotels, guest houses, and dharamshalas on major stops. Pre-booking is recommended during peak season.",
+    "hi": "मुख्य पड़ावों पर होटल, गेस्ट हाउस और धर्मशालाएं मिल जाती हैं। पीक सीजन में पहले से बुकिंग करना बेहतर है।"
+  },
+  "transport": {
+    "en": "Buses, shared jeeps, and private taxis are common options. Road conditions may affect travel time.",
+    "hi": "बस, शेयर जीप और निजी टैक्सी सामान्य विकल्प हैं। सड़क की स्थिति के कारण यात्रा समय बदल सकता है।"
+  },
+  "helicopter": {
+    "en": "Helicopter services are available for some routes like Kedarnath, subject to weather and booking availability.",
+    "hi": "केदारनाथ जैसे कुछ मार्गों पर हेलीकॉप्टर सेवा उपलब्ध है, लेकिन यह मौसम और सीट उपलब्धता पर निर्भर करती है।"
+  },
+  "packing": {
+    "en": "Pack warm clothes, rain gear, medicines, identity proof, comfortable shoes, and power bank.",
+    "hi": "गर्म कपड़े, रेन गियर, दवाइयां, पहचान पत्र, आरामदायक जूते और पावर बैंक जरूर रखें।"
+  },
+  "duration": {
+    "en": "A complete Char Dham Yatra usually takes around 9-12 days depending on weather, traffic, and halts.",
+    "hi": "पूरी चारधाम यात्रा सामान्यतः 9-12 दिन लेती है, जो मौसम, ट्रैफिक और रुकने के स्थान पर निर्भर करती है।"
+  },
+  "start_point": {
+    "en": "Most pilgrims start Char Dham Yatra from Haridwar, Rishikesh, or Dehradun.",
+    "hi": "अधिकांश यात्री चारधाम यात्रा हरिद्वार, ऋषिकेश या देहरादून से शुरू करते हैं।"
+  },
+  "darshan": {
+    "en": "For smooth darshan, visit early morning, avoid peak rush hours, and keep ID and permits ready.",
+    "hi": "सुगम दर्शन के लिए सुबह जल्दी जाएं, भीड़ वाले समय से बचें और पहचान पत्र व परमिट तैयार रखें।"
+  },
+  "health": {
+    "en": "Carry personal medicines, do basic acclimatization, and consult a doctor before travel if you have chronic conditions.",
+    "hi": "अपनी दवाइयां साथ रखें, बेसिक अनुकूलन करें और पुरानी बीमारी होने पर यात्रा से पहले डॉक्टर से सलाह लें।"
+  },
+  "eco": {
+    "en": "Keep the Himalayas clean: avoid plastic litter, use refillable bottles, and follow local eco guidelines.",
+    "hi": "हिमालय को स्वच्छ रखें: प्लास्टिक कचरा न फैलाएं, रीफिलेबल बोतलें इस्तेमाल करें और स्थानीय पर्यावरण नियम मानें।"
+  },
+  "winter": {
+    "en": "Most Char Dham temples close in winter due to heavy snowfall. Check opening and closing dates before planning.",
+    "hi": "भारी बर्फबारी के कारण सर्दियों में अधिकांश चारधाम मंदिर बंद रहते हैं। योजना से पहले खुलने-बंद होने की तारीख जरूर देखें।"
+  },
+  "unknown": {
+    "en": "I can help with routes, weather, registration, safety, trekking, and travel planning for Char Dham. Please ask in detail.",
+    "hi": "मैं चारधाम यात्रा में रूट, मौसम, रजिस्ट्रेशन, सुरक्षा, ट्रेक और यात्रा योजना में मदद कर सकता हूं। कृपया थोड़ा विस्तार से पूछें।"
+  }
+}

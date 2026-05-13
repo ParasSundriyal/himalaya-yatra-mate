@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Live geofence pings (optional direct client writes; backend uses Admin SDK and ignores these rules.)
+    match /active_user_locations/{docId} {
+      allow read: if false;
+      allow write: if request.auth != null && request.auth.uid == docId;
+    }
+
+    // Blended crowd levels (written only by backend Admin SDK)
+    match /crowd_data/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Official-site scrape cache (written only by backend Admin SDK)
+    match /scrape_cache/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}

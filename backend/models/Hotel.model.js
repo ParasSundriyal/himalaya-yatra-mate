@@ -11,6 +11,31 @@ const hotelSchema = new mongoose.Schema({
     required: [true, 'Location is required'],
     enum: ['Badrinath', 'Kedarnath', 'Gangotri', 'Yamunotri', 'Rishikesh', 'Haridwar']
   },
+  /** Lowercase dham key for itinerary queries: yamunotri | gangotri | kedarnath | badrinath */
+  dham: {
+    type: String,
+    lowercase: true,
+    trim: true,
+    sparse: true,
+  },
+  type: {
+    type: String,
+    enum: ['dharamshala', 'budget', 'midrange', 'premium'],
+    default: 'midrange',
+  },
+  distanceFromTemple: {
+    type: Number,
+    default: 1,
+    min: 0,
+  },
+  isGMVN: {
+    type: Boolean,
+    default: false,
+  },
+  locationName: {
+    type: String,
+    trim: true,
+  },
   address: {
     street: String,
     city: String,
@@ -67,6 +92,9 @@ const hotelSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+hotelSchema.index({ dham: 1, type: 1, isActive: 1 });
+hotelSchema.index({ location: 1, isActive: 1 });
 
 const Hotel = mongoose.model('Hotel', hotelSchema);
 
