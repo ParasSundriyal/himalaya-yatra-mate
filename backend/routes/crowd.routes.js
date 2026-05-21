@@ -11,6 +11,13 @@ const ML_BASE =
 
 const DHAMS = ['yamunotri', 'gangotri', 'kedarnath', 'badrinath'];
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Crowd
+ *     description: Real-time crowd data and predictions
+ */
+
 router.get(
   '/live',
   authenticate,

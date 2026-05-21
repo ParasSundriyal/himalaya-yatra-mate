@@ -55,6 +55,13 @@ function normCrowdLevel(raw) {
 }
 
 /**
+ * @swagger
+ * tags:
+ *   - name: Dashboard
+ *     description: Live dashboard data and statistics
+ */
+
+/**
  * GET /api/dashboard/live
  * Uses Firestore crowd_data when present; Mongo pass counts + weather unchanged.
  */

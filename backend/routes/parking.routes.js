@@ -10,6 +10,74 @@ import QRCode from 'qrcode';
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Parking
+ *     description: Parking area and booking management
+ */
+
+/**
+ * @swagger
+ * /api/parking/areas:
+ *   get:
+ *     summary: Get all parking areas
+ *     tags: [Parking]
+ *     responses:
+ *       200:
+ *         description: Parking areas retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 count:
+ *                   type: integer
+ *                 areas:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       location:
+ *                         type: string
+ *                       totalSlots:
+ *                         type: integer
+ *                       availableSlots:
+ *                         type: integer
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/parking/areas:
+ *   get:
+ *     summary: Get all parking areas
+ *     tags: [Parking]
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/parking/areas:
+ *   get:
+ *     tags:
+ *       - Parking
+ *     summary: Get all parking areas
+ *     responses:
+ *       200:
+ *         description: Successful response
+ */
 // @route   GET /api/parking/areas
 // @desc    Get all parking areas
 // @access  Public
@@ -31,6 +99,74 @@ router.get('/areas', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/parking/areas/{areaId}/slots:
+ *   get:
+ *     summary: Get available slots for a parking area
+ *     tags: [Parking]
+ *     parameters:
+ *       - in: path
+ *         name: areaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [available, booked, maintenance]
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: string
+ *           enum: [compact, sedan, suv, large]
+ *     responses:
+ *       200:
+ *         description: Slots retrieved successfully
+ *       404:
+ *         description: Parking area not found
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/parking/areas/:areaId/slots:
+ *   get:
+ *     summary: Get available slots for a parking area
+ *     tags: [Parking]
+ *     parameters:
+ *       - in: path
+ *         name: areaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/parking/areas/{areaId}/slots:
+ *   get:
+ *     tags:
+ *       - Parking
+ *     summary: Get available slots for a parking area
+ *     parameters:
+ *      - in: path
+        name: areaId
+        required: true
+        schema:
+          type: string
+        description: areaId parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ */
 // @route   GET /api/parking/areas/:areaId/slots
 // @desc    Get available slots for a parking area
 // @access  Public
@@ -82,6 +218,50 @@ router.get('/areas/:areaId/slots', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/parking/book:
+ *   post:
+ *     summary: Book a parking slot (for self or for group member if instructor)
+ *     tags: [Parking]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/parking/book:
+ *   post:
+ *     tags:
+ *       - Parking
+ *     summary: Book a parking slot (for self or for group member if instructor)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   POST /api/parking/book
 // @desc    Book a parking slot (for self or for group member if instructor)
 // @access  Private
@@ -258,6 +438,39 @@ router.post('/book', authenticate, [
   }
 });
 
+/**
+ * @swagger
+ * /api/parking/my-bookings:
+ *   get:
+ *     summary: Get user's parking bookings
+ *     tags: [Parking]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/parking/my-bookings:
+ *   get:
+ *     tags:
+ *       - Parking
+ *     summary: Get user's parking bookings
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   GET /api/parking/my-bookings
 // @desc    Get user's parking bookings
 // @access  Private
@@ -284,6 +497,63 @@ router.get('/my-bookings', authenticate, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/parking/cancel/:bookingId:
+ *   post:
+ *     summary: Cancel a parking booking
+ *     tags: [Parking]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: bookingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/parking/cancel/{bookingId}:
+ *   post:
+ *     tags:
+ *       - Parking
+ *     summary: Cancel a parking booking
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *      - in: path
+        name: bookingId
+        required: true
+        schema:
+          type: string
+        description: bookingId parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   POST /api/parking/cancel/:bookingId
 // @desc    Cancel a parking booking
 // @access  Private
@@ -343,6 +613,50 @@ router.post('/cancel/:bookingId', authenticate, async (req, res) => {
 
 // ==================== ADMIN ROUTES ====================
 
+/**
+ * @swagger
+ * /api/parking/admin/areas:
+ *   post:
+ *     summary: Create a new parking area (Admin only)
+ *     tags: [Parking]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/parking/admin/areas:
+ *   post:
+ *     tags:
+ *       - Parking
+ *     summary: Create a new parking area (Admin only)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   POST /api/parking/admin/areas
 // @desc    Create a new parking area (Admin only)
 // @access  Private (Admin only)
@@ -391,6 +705,63 @@ router.post('/admin/areas', authenticate, authorize(['admin']), [
   }
 });
 
+/**
+ * @swagger
+ * /api/parking/admin/areas/:areaId:
+ *   put:
+ *     summary: Update a parking area (Admin only)
+ *     tags: [Parking]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: areaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/parking/admin/areas/{areaId}:
+ *   put:
+ *     tags:
+ *       - Parking
+ *     summary: Update a parking area (Admin only)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *      - in: path
+        name: areaId
+        required: true
+        schema:
+          type: string
+        description: areaId parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   PUT /api/parking/admin/areas/:areaId
 // @desc    Update a parking area (Admin only)
 // @access  Private (Admin only)
@@ -439,6 +810,52 @@ router.put('/admin/areas/:areaId', authenticate, authorize(['admin']), [
   }
 });
 
+/**
+ * @swagger
+ * /api/parking/admin/areas/:areaId:
+ *   delete:
+ *     summary: Delete a parking area (Admin only)
+ *     tags: [Parking]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: areaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/parking/admin/areas/{areaId}:
+ *   delete:
+ *     tags:
+ *       - Parking
+ *     summary: Delete a parking area (Admin only)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *      - in: path
+        name: areaId
+        required: true
+        schema:
+          type: string
+        description: areaId parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   DELETE /api/parking/admin/areas/:areaId
 // @desc    Delete a parking area (Admin only)
 // @access  Private (Admin only)
@@ -481,6 +898,63 @@ router.delete('/admin/areas/:areaId', authenticate, authorize(['admin']), async 
   }
 });
 
+/**
+ * @swagger
+ * /api/parking/admin/areas/:areaId/slots:
+ *   post:
+ *     summary: Add slots to a parking area (Admin only)
+ *     tags: [Parking]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: areaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/parking/admin/areas/{areaId}/slots:
+ *   post:
+ *     tags:
+ *       - Parking
+ *     summary: Add slots to a parking area (Admin only)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *      - in: path
+        name: areaId
+        required: true
+        schema:
+          type: string
+        description: areaId parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   POST /api/parking/admin/areas/:areaId/slots
 // @desc    Add slots to a parking area (Admin only)
 // @access  Private (Admin only)
@@ -553,6 +1027,74 @@ router.post('/admin/areas/:areaId/slots', authenticate, authorize(['admin']), [
   }
 });
 
+/**
+ * @swagger
+ * /api/parking/admin/areas/:areaId/slots/:slotId:
+ *   put:
+ *     summary: Update a parking slot (Admin only)
+ *     tags: [Parking]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: areaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: slotId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/parking/admin/areas/{areaId}/slots/{slotId}:
+ *   put:
+ *     tags:
+ *       - Parking
+ *     summary: Update a parking slot (Admin only)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *      - in: path
+        name: areaId
+        required: true
+        schema:
+          type: string
+        description: areaId parameter
+ *      - in: path
+        name: slotId
+        required: true
+        schema:
+          type: string
+        description: slotId parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   PUT /api/parking/admin/areas/:areaId/slots/:slotId
 // @desc    Update a parking slot (Admin only)
 // @access  Private (Admin only)
@@ -623,6 +1165,63 @@ router.put('/admin/areas/:areaId/slots/:slotId', authenticate, authorize(['admin
   }
 });
 
+/**
+ * @swagger
+ * /api/parking/admin/areas/:areaId/slots/:slotId:
+ *   delete:
+ *     summary: Delete a parking slot (Admin only)
+ *     tags: [Parking]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: areaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: slotId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/parking/admin/areas/{areaId}/slots/{slotId}:
+ *   delete:
+ *     tags:
+ *       - Parking
+ *     summary: Delete a parking slot (Admin only)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *      - in: path
+        name: areaId
+        required: true
+        schema:
+          type: string
+        description: areaId parameter
+ *      - in: path
+        name: slotId
+        required: true
+        schema:
+          type: string
+        description: slotId parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   DELETE /api/parking/admin/areas/:areaId/slots/:slotId
 // @desc    Delete a parking slot (Admin only)
 // @access  Private (Admin only)

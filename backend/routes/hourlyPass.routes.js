@@ -11,6 +11,13 @@ import QRCode from 'qrcode';
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Hourly Passes
+ *     description: Hourly checkpoint passes management
+ */
+
 // Helper function to get IST date string (YYYY-MM-DD)
 const getISTDateString = (date = new Date()) => {
   const istDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
@@ -31,6 +38,44 @@ const createISTDate = (dateString, hour) => {
   return new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
 };
 
+/**
+ * @swagger
+ * /api/hourly-passes/checkpoints/:checkpointId/slots:
+ *   get:
+ *     summary: Get available hourly slots for a checkpoint on a specific date
+ *     tags: [Hourly Passes]
+ *     parameters:
+ *       - in: path
+ *         name: checkpointId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/hourly-passes/checkpoints/{checkpointId}/slots:
+ *   get:
+ *     tags:
+ *       - Hourly Passes
+ *     summary: Get available hourly slots for a checkpoint on a specific date
+ *     parameters:
+ *      - in: path
+        name: checkpointId
+        required: true
+        schema:
+          type: string
+        description: checkpointId parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ */
 // @route   GET /api/hourly-passes/checkpoints/:checkpointId/slots
 // @desc    Get available hourly slots for a checkpoint on a specific date
 // @access  Public
@@ -148,6 +193,42 @@ router.get('/checkpoints/:checkpointId/slots', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/hourly-passes/book:
+ *   post:
+ *     summary: Book an hourly pass (Public - everyone can book, or for group member if instructor)
+ *     tags: [Hourly Passes]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/hourly-passes/book:
+ *   post:
+ *     tags:
+ *       - Hourly Passes
+ *     summary: Book an hourly pass (Public - everyone can book, or for group member if instructor)
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ */
 // @route   POST /api/hourly-passes/book
 // @desc    Book an hourly pass (Public - everyone can book, or for group member if instructor)
 // @access  Public (optional auth for registered users)
@@ -396,6 +477,63 @@ router.post('/book', optionalAuth, [
   }
 });
 
+/**
+ * @swagger
+ * /api/hourly-passes/scan/:passId:
+ *   post:
+ *     summary: Scan QR code and mark pass as used (Admin only)
+ *     tags: [Hourly Passes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: passId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/hourly-passes/scan/{passId}:
+ *   post:
+ *     tags:
+ *       - Hourly Passes
+ *     summary: Scan QR code and mark pass as used (Admin only)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *      - in: path
+        name: passId
+        required: true
+        schema:
+          type: string
+        description: passId parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   POST /api/hourly-passes/scan/:passId
 // @desc    Scan QR code and mark pass as used (Admin only)
 // @access  Private (Admin only)
@@ -481,6 +619,37 @@ router.post('/scan/:passId', authenticate, authorize(['admin']), async (req, res
   }
 });
 
+/**
+ * @swagger
+ * /api/hourly-passes/my-passes:
+ *   get:
+ *     summary: Get user's passes (if logged in)
+ *     tags: [Hourly Passes]
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/hourly-passes/my-passes:
+ *   get:
+ *     tags:
+ *       - Hourly Passes
+ *     summary: Get user's passes (if logged in)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   GET /api/hourly-passes/my-passes
 // @desc    Get user's passes (if logged in)
 // @access  Private (optional - returns empty if not logged in)
@@ -552,6 +721,39 @@ router.get('/my-passes', optionalAuth, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/hourly-passes/admin/all-passes:
+ *   get:
+ *     summary: Get all passes (Admin) - Limited info with pagination
+ *     tags: [Hourly Passes]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/hourly-passes/admin/all-passes:
+ *   get:
+ *     tags:
+ *       - Hourly Passes
+ *     summary: Get all passes (Admin) - Limited info with pagination
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   GET /api/hourly-passes/admin/all-passes
 // @desc    Get all passes (Admin) - Limited info with pagination
 // @access  Private (Admin only)
@@ -633,6 +835,50 @@ router.get('/admin/all-passes', authenticate, authorize(['admin']), async (req, 
   }
 });
 
+/**
+ * @swagger
+ * /api/hourly-passes/admin/slots:
+ *   post:
+ *     summary: Set capacity for a specific checkpoint/date/hour slot (Admin)
+ *     tags: [Hourly Passes]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/hourly-passes/admin/slots:
+ *   post:
+ *     tags:
+ *       - Hourly Passes
+ *     summary: Set capacity for a specific checkpoint/date/hour slot (Admin)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   POST /api/hourly-passes/admin/slots
 // @desc    Set capacity for a specific checkpoint/date/hour slot (Admin)
 // @access  Private (Admin only)
@@ -703,6 +949,39 @@ router.post('/admin/slots', authenticate, authorize(['admin']), [
   }
 });
 
+/**
+ * @swagger
+ * /api/hourly-passes/admin/slots:
+ *   get:
+ *     summary: Get slot configurations for a checkpoint/date (Admin)
+ *     tags: [Hourly Passes]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/hourly-passes/admin/slots:
+ *   get:
+ *     tags:
+ *       - Hourly Passes
+ *     summary: Get slot configurations for a checkpoint/date (Admin)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   GET /api/hourly-passes/admin/slots
 // @desc    Get slot configurations for a checkpoint/date (Admin)
 // @access  Private (Admin only)

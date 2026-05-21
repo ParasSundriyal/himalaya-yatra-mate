@@ -1,0 +1,498 @@
+{
+  "name": "Himalaya Yatra Mate AI",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chardham-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "message",
+              "value": "={{ $json.message || '' }}",
+              "type": "string"
+            },
+            {
+              "name": "userId",
+              "value": "={{ $json.userId || '' }}",
+              "type": "string"
+            },
+            {
+              "name": "userToken",
+              "value": "={{ $json.userToken || '' }}",
+              "type": "string"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language || 'en' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "normalize-input",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message }}",
+        "options": {
+          "systemMessage": "You are Yatra Buddy.\n\nYour job is ONLY:\n1. Detect user intent\n2. Extract entities\n3. Return STRICT JSON\n\nReturn JSON only.\n\nPossible intents:\n- parking\n- hotels\n- taxis\n- hourly_pass\n- crowd_live\n- crowd_predict\n- dham_status\n- nearby_attractions\n- web_search\n\nNormalize dham names to lowercase.\nNormalize dates to YYYY-MM-DD.\n\nReturn format:\n{\n  \"intent\": \"string\",\n  \"location\": \"\",\n  \"dham\": \"\",\n  \"date\": \"\",\n  \"budget\": null,\n  \"pickup\": \"\",\n  \"dropoff\": \"\",\n  \"rawMessage\": \"\"\n}"
+        }
+      },
+      "id": "ai-intent-extractor",
+      "name": "AI Intent Extractor",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.text || $json.output || '{}';\n\ntry {\n  const parsed = JSON.parse(raw);\n  return [{ json: parsed }];\n} catch (e) {\n  return [{\n    json: {\n      intent: 'web_search',\n      rawMessage: raw\n    }\n  }];\n}"
+      },
+      "id": "parse-json",
+      "name": "Parse AI JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        750,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "parking",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "hotels",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "crowd_live",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "web_search",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "intent-switch",
+      "name": "Intent Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://internal.docker.host:5000/api/parking/areas",
+        "sendHeaders": true,
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "get-parking",
+      "name": "Get Parking Areas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1300,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $json;\n\nif (!data.areas || data.areas.length === 0) {\n  return [{ json: { reply: 'No parking areas available.' } }];\n}\n\nconst lines = data.areas.map(a => `• ${a.name} (${a.location}) — ${a.availableSlots}/${a.totalSlots} slots available`);\n\nreturn [{\n  json: {\n    reply: `Available parking areas:\n\n${lines.join('\n')}`,\n    intent: 'parking'\n  }\n}];"
+      },
+      "id": "format-parking",
+      "name": "Format Parking",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1550,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://internal.docker.host:5000/api/hotels",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "location",
+              "value": "={{ $json.location }}"
+            },
+            {
+              "name": "maxPrice",
+              "value": "={{ $json.budget }}"
+            },
+            {
+              "name": "available",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "get-hotels",
+      "name": "Get Hotels",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1300,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const hotels = $json.hotels || [];\n\nif (!hotels.length) {\n  return [{ json: { reply: 'No hotels found.' } }];\n}\n\nconst text = hotels.slice(0,5).map(h => `• ${h.name}\n₹${h.pricePerNight}/night\nRating: ${h.rating}\nLocation: ${h.location}`).join('\n\n');\n\nreturn [{\n  json: {\n    reply: `Available hotels:\n\n${text}`,\n    intent: 'hotels'\n  }\n}];"
+      },
+      "id": "format-hotels",
+      "name": "Format Hotels",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1550,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://internal.docker.host:5000/api/dashboard/live",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "crowd-live",
+      "name": "Get Crowd Live",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1300,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cards = $json.cards || [];\n\nif (!cards.length) {\n  return [{ json: { reply: 'Crowd data unavailable.' } }];\n}\n\nconst lines = cards.map(c => `• ${c.dham}\nCrowd: ${c.crowd.level} (${c.crowd.pct}%)\nTemp: ${c.temperatureC}°C\nWait: ${c.waitTimeMins} mins`).join('\n\n');\n\nreturn [{\n  json: {\n    reply: `Live Dham Status:\n\n${lines}`,\n    intent: 'crowd_live'\n  }\n}];"
+      },
+      "id": "format-crowd",
+      "name": "Format Crowd",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1550,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"api_key\": \"YOUR_TAVILY_API_KEY\",\n  \"query\": $json.rawMessage + ' Chardham Yatra',\n  \"max_results\": 3\n}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "web-search",
+      "name": "Web Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1300,
+        650
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = $json.results || [];\n\nif (!results.length) {\n  return [{ json: { reply: 'No information found.' } }];\n}\n\nconst text = results.map(r => `• ${r.title}\n${r.content}`).join('\n\n');\n\nreturn [{\n  json: {\n    reply: text,\n    intent: 'web_search'\n  }\n}];"
+      },
+      "id": "format-search",
+      "name": "Format Search",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1550,
+        650
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"reply\": $json.reply,\n  \"intent\": $json.intent || '',\n  \"source\": \"n8n\"\n}"
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1850,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "AI Intent Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Intent Extractor": {
+      "main": [
+        [
+          {
+            "node": "Parse AI JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI JSON": {
+      "main": [
+        [
+          {
+            "node": "Intent Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent Switch": {
+      "main": [
+        [
+          {
+            "node": "Get Parking Areas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Hotels",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Crowd Live",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Web Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Parking Areas": {
+      "main": [
+        [
+          {
+            "node": "Format Parking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Parking": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Hotels": {
+      "main": [
+        [
+          {
+            "node": "Format Hotels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Hotels": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Crowd Live": {
+      "main": [
+        [
+          {
+            "node": "Format Crowd",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Crowd": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Web Search": {
+      "main": [
+        [
+          {
+            "node": "Format Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Search": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

@@ -8,6 +8,80 @@ import { authenticate, optionalAuth } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Taxis
+ *     description: Taxi booking and management
+ */
+
+/**
+ * @swagger
+ * /api/taxis:
+ *   get:
+ *     summary: Get all available taxis with filters
+ *     tags: [Taxis]
+ *     parameters:
+ *       - in: query
+ *         name: location
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: vehicleType
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: minSeats
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: maxPrice
+ *         schema:
+ *           type: number
+ *     responses:
+ *       200:
+ *         description: Taxis retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 count:
+ *                   type: integer
+ *                 taxis:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/taxis:
+ *   get:
+ *     summary: Get all available taxis with filters
+ *     tags: [Taxis]
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/taxis:
+ *   get:
+ *     tags:
+ *       - Taxis
+ *     summary: Get all available taxis with filters
+ *     responses:
+ *       200:
+ *         description: Successful response
+ */
 // @route   GET /api/taxis
 // @desc    Get all available taxis with filters
 // @access  Public
@@ -50,6 +124,44 @@ router.get('/', optionalAuth, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/taxis/:id:
+ *   get:
+ *     summary: Get single taxi by ID
+ *     tags: [Taxis]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/taxis/{id}:
+ *   get:
+ *     tags:
+ *       - Taxis
+ *     summary: Get single taxi by ID
+ *     parameters:
+ *      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        description: id parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ */
 // @route   GET /api/taxis/:id
 // @desc    Get single taxi by ID
 // @access  Public
@@ -74,6 +186,50 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/taxis/book:
+ *   post:
+ *     summary: Book a taxi (for self or for group member if instructor)
+ *     tags: [Taxis]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/taxis/book:
+ *   post:
+ *     tags:
+ *       - Taxis
+ *     summary: Book a taxi (for self or for group member if instructor)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   POST /api/taxis/book
 // @desc    Book a taxi (for self or for group member if instructor)
 // @access  Private
@@ -184,6 +340,39 @@ router.post('/book', authenticate, [
   }
 });
 
+/**
+ * @swagger
+ * /api/taxis/my-bookings:
+ *   get:
+ *     summary: Get user's taxi bookings
+ *     tags: [Taxis]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/taxis/my-bookings:
+ *   get:
+ *     tags:
+ *       - Taxis
+ *     summary: Get user's taxi bookings
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   GET /api/taxis/my-bookings
 // @desc    Get user's taxi bookings
 // @access  Private
@@ -210,6 +399,63 @@ router.get('/my-bookings', authenticate, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/taxis/cancel/:bookingId:
+ *   post:
+ *     summary: Cancel a taxi booking
+ *     tags: [Taxis]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: bookingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/taxis/cancel/{bookingId}:
+ *   post:
+ *     tags:
+ *       - Taxis
+ *     summary: Cancel a taxi booking
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *      - in: path
+        name: bookingId
+        required: true
+        schema:
+          type: string
+        description: bookingId parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   POST /api/taxis/cancel/:bookingId
 // @desc    Cancel a taxi booking
 // @access  Private

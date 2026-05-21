@@ -40,6 +40,8 @@
     "nodemailer": "^6.9.7",
     "qrcode": "^1.5.3",
     "string-similarity": "^4.0.4",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^11.0.3"
   },
   "devDependencies": {

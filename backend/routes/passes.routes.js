@@ -35,6 +35,45 @@ function isDhamOpen(dham, visitDate) {
   return false;
 }
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Passes
+ *     description: Dham pass management and quotas
+ */
+
+/**
+ * @swagger
+ * /api/passes:
+ *   post:
+ *     summary: Create a new dham pass
+ *     tags: [Passes]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - dham
+ *               - visitDate
+ *             properties:
+ *               dham:
+ *                 type: string
+ *                 enum: [Yamunotri, Gangotri, Kedarnath, Badrinath]
+ *               visitDate:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       201:
+ *         description: Pass created successfully
+ *       400:
+ *         description: Bad request - dham closed or quota exceeded
+ *       500:
+ *         description: Server error
+ */
 // POST /api/passes - Create a new dham pass
 router.post('/', authenticate, async (req, res) => {
   try {

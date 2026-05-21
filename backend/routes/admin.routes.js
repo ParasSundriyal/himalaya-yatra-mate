@@ -14,6 +14,77 @@ const router = express.Router();
 router.use(authenticate);
 router.use(authorize('admin'));
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Admin
+ *     description: Admin dashboard and management operations
+ */
+
+/**
+ * @swagger
+ * /api/admin/stats:
+ *   get:
+ *     summary: Get admin dashboard statistics
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Admin statistics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalUsers:
+ *                   type: integer
+ *                 totalTourists:
+ *                   type: integer
+ *                 totalGroups:
+ *                   type: integer
+ *                 totalBookings:
+ *                   type: integer
+ *                 activeBookings:
+ *                   type: integer
+ *                 totalHotels:
+ *                   type: integer
+ *                 totalTaxis:
+ *                   type: integer
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/admin/stats:
+ *   get:
+ *     summary: Get admin dashboard statistics
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/admin/stats:
+ *   get:
+ *     tags:
+ *       - Admin
+ *     summary: Get admin dashboard statistics
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   GET /api/admin/stats
 // @desc    Get admin dashboard statistics
 // @access  Private (Admin)
@@ -98,6 +169,37 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/admin/users:
+ *   get:
+ *     summary: Get all users with filters
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/admin/users:
+ *   get:
+ *     tags:
+ *       - Admin
+ *     summary: Get all users with filters
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   GET /api/admin/users
 // @desc    Get all users with filters
 // @access  Private (Admin)
@@ -141,6 +243,61 @@ router.get('/users', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/admin/users/:id/status:
+ *   put:
+ *     summary: Update user status (activate/deactivate)
+ *     tags: [Admin]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/admin/users/{id}/status:
+ *   put:
+ *     tags:
+ *       - Admin
+ *     summary: Update user status (activate/deactivate)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        description: id parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   PUT /api/admin/users/:id/status
 // @desc    Update user status (activate/deactivate)
 // @access  Private (Admin)
@@ -173,6 +330,37 @@ router.put('/users/:id/status', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/admin/bookings:
+ *   get:
+ *     summary: Get all bookings with filters
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/admin/bookings:
+ *   get:
+ *     tags:
+ *       - Admin
+ *     summary: Get all bookings with filters
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   GET /api/admin/bookings
 // @desc    Get all bookings with filters
 // @access  Private (Admin)
@@ -217,6 +405,37 @@ router.get('/bookings', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/admin/activities:
+ *   get:
+ *     summary: Get recent activities
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/admin/activities:
+ *   get:
+ *     tags:
+ *       - Admin
+ *     summary: Get recent activities
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   GET /api/admin/activities
 // @desc    Get recent activities
 // @access  Private (Admin)

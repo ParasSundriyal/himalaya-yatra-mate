@@ -22,6 +22,13 @@ import {
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Itinerary
+ *     description: Itinerary planning and generation
+ */
+
 const ML_BASE =
   process.env.ML_SERVICE_URL || process.env.CROWD_ML_URL || 'http://localhost:5001';
 

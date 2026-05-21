@@ -2,6 +2,10 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+// 1. Import Swagger libraries
+import swaggerJsdoc from 'swagger-jsdoc';
+import swaggerUi from 'swagger-ui-express';
+
 import authRoutes from './routes/auth.routes.js';
 import parkingRoutes from './routes/parking.routes.js';
 import hotelRoutes from './routes/hotel.routes.js';
@@ -27,96 +31,102 @@ import {
   updateCrowdFirestore,
 } from './services/crowdBlender.js';
 
-// Load environment variables
 dotenv.config();
 bootstrapFirebaseAdmin();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware - CORS Configuration
+// --- 2. Swagger Configuration ---
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Himalaya Yatra Mate API',
+      version: '1.0.0',
+      description: 'API Documentation for the Himalaya Yatra Mate platform',
+    },
+    servers: [
+      {
+        url: `http://localhost:${PORT}`,
+        description: 'Development server',
+      },
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'JWT Bearer token for authentication',
+        },
+      },
+    },
+  },
+  // Path to the API docs (it will look inside your routes folder for JSDoc comments)
+  apis: ['./routes/*.js'], 
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+// --------------------------------
+
+// Middleware
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  `http://localhost:${PORT}`,
+  `http://127.0.0.1:${PORT}`,
   'http://localhost:5173',
   'http://localhost:8080',
   'http://localhost:3000',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:8080',
   'http://127.0.0.1:3000'
-].filter(Boolean); // Remove undefined values
+].filter(Boolean);
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
       callback(null, true);
     } else {
-      // In development, allow all origins
-      if (process.env.NODE_ENV === 'development') {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-// Body parsing with increased limits for uploads (e.g., profile photos as base64)
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// --- 3. Serve Swagger UI ---
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/himalaya-yatra';
 
-if (!process.env.MONGODB_URI) {
-  console.warn('⚠️  Warning: MONGODB_URI not set in environment variables');
-  console.warn('   Using default: mongodb://localhost:27017/himalaya-yatra');
-  console.warn('   Please set MONGODB_URI in .env file for MongoDB Atlas connection');
-}
-
 mongoose
-  .connect(MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(MONGODB_URI)
   .then(() => {
     console.log('✅ MongoDB connected successfully');
-    console.log('📊 Database:', mongoose.connection.name);
-    console.log('🌐 Host:', mongoose.connection.host);
-
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`📖 API Docs available at http://localhost:${PORT}/api-docs`);
+      
       scheduleScraperCron();
       scheduleCrowdBlendCron();
-      updateCrowdFirestore().catch((e) =>
-        console.error('[startup] updateCrowdFirestore:', e.message),
-      );
+      updateCrowdFirestore().catch((e) => console.error(e.message));
     });
   })
   .catch((err) => {
-    console.error('❌ MongoDB connection error:');
-    console.error('   Error:', err.message);
-    if (err.message.includes('authentication failed')) {
-      console.error('   💡 Tip: Check your username and password in MONGODB_URI');
-      console.error('   💡 Tip: Make sure to URL encode special characters in password');
-    } else if (err.message.includes('IP')) {
-      console.error('   💡 Tip: Add your IP address to Network Access in MongoDB Atlas');
-    }
+    console.error('❌ MongoDB connection error:', err.message);
     process.exit(1);
   });
 
 // Routes
 app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Himalaya Yatra Mate API', 
-    version: '1.0.0',
-    status: 'running' 
-  });
+  res.json({ message: 'Himalaya Yatra Mate API', version: '1.0.0', status: 'running' });
 });
 
 app.use('/api/auth', authRoutes);
@@ -138,17 +148,14 @@ app.use('/api/location', locationRoutes);
 app.use('/api/crowd', crowdRoutes);
 app.use('/api/maps', mapsRoutes);
 
-// Error handling middleware
+// Error handling
 app.use((err, req, res, next) => {
-  console.error(err.stack);
   res.status(err.status || 500).json({
     message: err.message || 'Internal Server Error',
     error: process.env.NODE_ENV === 'development' ? err : {}
   });
 });
 
-// 404 handler
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
-

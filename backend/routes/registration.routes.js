@@ -9,6 +9,13 @@ import { syncPilgrimToFirestore } from '../services/pilgrimFirestoreSync.js';
 const router = express.Router();
 
 /**
+ * @swagger
+ * tags:
+ *   - name: Registration
+ *     description: User registration and profile completion
+ */
+
+/**
  * POST /api/registration/profile
  * Completes Smart Chardham profile after login (OTP/Firebase can be wired later).
  * Stores Aadhaar only as SHA-256 hash. Generates CY-[STATE]-[YEAR]-[6-digit] pilgrim ID.

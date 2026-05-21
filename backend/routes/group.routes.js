@@ -8,6 +8,86 @@ import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Groups
+ *     description: Group management for instructors and members
+ */
+
+/**
+ * @swagger
+ * /api/groups:
+ *   post:
+ *     summary: Create a new group (Group Instructor only)
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Group created successfully
+ *       400:
+ *         description: Group already exists
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/groups:
+ *   post:
+ *     summary: Create a new group (Group Instructor only)
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/groups:
+ *   post:
+ *     tags:
+ *       - Groups
+ *     summary: Create a new group (Group Instructor only)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   POST /api/groups
 // @desc    Create a new group (Group Instructor only)
 // @access  Private (Group role)
@@ -58,6 +138,39 @@ router.post('/', authenticate, authorize('group', 'admin'), [
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/my-group:
+ *   get:
+ *     summary: Get instructor's group
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/groups/my-group:
+ *   get:
+ *     tags:
+ *       - Groups
+ *     summary: Get instructor's group
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   GET /api/groups/my-group
 // @desc    Get instructor's group
 // @access  Private (Group role)
@@ -84,6 +197,50 @@ router.get('/my-group', authenticate, authorize('group', 'admin'), async (req, r
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/add-member:
+ *   post:
+ *     summary: Add a member to the group
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/groups/add-member:
+ *   post:
+ *     tags:
+ *       - Groups
+ *     summary: Add a member to the group
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   POST /api/groups/add-member
 // @desc    Add a member to the group
 // @access  Private (Group role)
@@ -161,6 +318,52 @@ router.post('/add-member', authenticate, authorize('group', 'admin'), [
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/remove-member/:memberId:
+ *   delete:
+ *     summary: Remove a member from the group
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/groups/remove-member/{memberId}:
+ *   delete:
+ *     tags:
+ *       - Groups
+ *     summary: Remove a member from the group
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *      - in: path
+        name: memberId
+        required: true
+        schema:
+          type: string
+        description: memberId parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   DELETE /api/groups/remove-member/:memberId
 // @desc    Remove a member from the group
 // @access  Private (Group role)
@@ -193,6 +396,39 @@ router.delete('/remove-member/:memberId', authenticate, authorize('group', 'admi
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/member-bookings:
+ *   get:
+ *     summary: Get all bookings from group members (including parking, hotels, taxis, and hourly passes)
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/groups/member-bookings:
+ *   get:
+ *     tags:
+ *       - Groups
+ *     summary: Get all bookings from group members (including parking, hotels, taxis, and hourly passes)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   GET /api/groups/member-bookings
 // @desc    Get all bookings from group members (including parking, hotels, taxis, and hourly passes)
 // @access  Private (Group role)
@@ -346,6 +582,52 @@ router.get('/member-bookings', authenticate, authorize('group', 'admin'), async 
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/:groupId:
+ *   get:
+ *     summary: Get group by ID (for admin)
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/groups/{groupId}:
+ *   get:
+ *     tags:
+ *       - Groups
+ *     summary: Get group by ID (for admin)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *      - in: path
+        name: groupId
+        required: true
+        schema:
+          type: string
+        description: groupId parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   GET /api/groups/:groupId
 // @desc    Get group by ID (for admin)
 // @access  Private (Admin)

@@ -5,6 +5,72 @@ import { authenticate, authorize, optionalAuth } from '../middleware/auth.middle
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Checkpoints
+ *     description: Checkpoint management
+ */
+
+/**
+ * @swagger
+ * /api/checkpoints:
+ *   get:
+ *     summary: Get all active checkpoints (admins get all)
+ *     tags: [Checkpoints]
+ *     responses:
+ *       200:
+ *         description: Checkpoints retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 count:
+ *                   type: integer
+ *                 checkpoints:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       location:
+ *                         type: string
+ *                       coordinates:
+ *                         type: object
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/checkpoints:
+ *   get:
+ *     summary: Get all active checkpoints (admins get all)
+ *     tags: [Checkpoints]
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/checkpoints:
+ *   get:
+ *     tags:
+ *       - Checkpoints
+ *     summary: Get all active checkpoints (admins get all)
+ *     responses:
+ *       200:
+ *         description: Successful response
+ */
 // @route   GET /api/checkpoints
 // @desc    Get all active checkpoints (admins get all)
 router.get('/', optionalAuth, async (req, res) => {
@@ -30,6 +96,65 @@ router.get('/', optionalAuth, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/checkpoints:
+ *   post:
+ *     summary: Create a new checkpoint (Admin only)
+ *     tags: [Checkpoints]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/checkpoints:
+ *   post:
+ *     tags:
+ *       - Checkpoints
+ *     summary: Create a new checkpoint (Admin only)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *       name:
+ *         type: string
+ *       location:
+ *         type: string
+ *       coordinates.lat:
+ *         type: integer
+ *       coordinates.lng:
+ *         type: integer
+ *       slotDuration:
+ *         type: integer
+ *       maxPassesPerSlot:
+ *         type: integer
+ *       pricePerHour:
+ *         type: integer
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ */
 // @route   POST /api/checkpoints
 // @desc    Create a new checkpoint (Admin only)
 router.post('/', authenticate, authorize(['admin']), [
@@ -79,6 +204,78 @@ router.post('/', authenticate, authorize(['admin']), [
   }
 });
 
+/**
+ * @swagger
+ * /api/checkpoints/:checkpointId:
+ *   put:
+ *     summary: Update a checkpoint (Admin only)
+ *     tags: [Checkpoints]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: checkpointId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/checkpoints/{checkpointId}:
+ *   put:
+ *     tags:
+ *       - Checkpoints
+ *     summary: Update a checkpoint (Admin only)
+ *     parameters:
+ *      - in: path
+        name: checkpointId
+        required: true
+        schema:
+          type: string
+        description: checkpointId parameter
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *       name:
+ *         type: string
+ *       location:
+ *         type: string
+ *       coordinates.lat:
+ *         type: integer
+ *       coordinates.lng:
+ *         type: integer
+ *       slotDuration:
+ *         type: integer
+ *       maxPassesPerSlot:
+ *         type: integer
+ *       pricePerHour:
+ *         type: integer
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ */
 // @route   PUT /api/checkpoints/:checkpointId
 // @desc    Update a checkpoint (Admin only)
 router.put('/:checkpointId', authenticate, authorize(['admin']), [
@@ -131,6 +328,46 @@ router.put('/:checkpointId', authenticate, authorize(['admin']), [
   }
 });
 
+/**
+ * @swagger
+ * /api/checkpoints/:checkpointId:
+ *   delete:
+ *     summary: Delete a checkpoint (Admin only)
+ *     tags: [Checkpoints]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: checkpointId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/checkpoints/{checkpointId}:
+ *   delete:
+ *     tags:
+ *       - Checkpoints
+ *     summary: Delete a checkpoint (Admin only)
+ *     parameters:
+ *      - in: path
+        name: checkpointId
+        required: true
+        schema:
+          type: string
+        description: checkpointId parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ */
 // @route   DELETE /api/checkpoints/:checkpointId
 // @desc    Delete a checkpoint (Admin only)
 router.delete('/:checkpointId', authenticate, authorize(['admin']), async (req, res) => {

@@ -11,6 +11,13 @@ const { FieldValue } = admin.firestore;
 const router = express.Router();
 
 /**
+ * @swagger
+ * tags:
+ *   - name: Location
+ *     description: User location tracking and geofencing
+ */
+
+/**
  * POST /api/location/update
  * Upserts active_user_locations/{pilgrimId} for geofence crowd blending.
  */

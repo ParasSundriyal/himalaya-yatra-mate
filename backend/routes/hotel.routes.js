@@ -8,6 +8,85 @@ import { authenticate, authorize, optionalAuth } from '../middleware/auth.middle
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Hotels
+ *     description: Hotel booking and management
+ */
+
+/**
+ * @swagger
+ * /api/hotels:
+ *   get:
+ *     summary: Get all hotels with filters
+ *     tags: [Hotels]
+ *     parameters:
+ *       - in: query
+ *         name: location
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: minPrice
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: maxPrice
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: rating
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: available
+ *         schema:
+ *           type: string
+ *           enum: ['true', 'false']
+ *     responses:
+ *       200:
+ *         description: Hotels retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 count:
+ *                   type: integer
+ *                 hotels:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/hotels:
+ *   get:
+ *     summary: Get all hotels with filters
+ *     tags: [Hotels]
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/hotels:
+ *   get:
+ *     tags:
+ *       - Hotels
+ *     summary: Get all hotels with filters
+ *     responses:
+ *       200:
+ *         description: Successful response
+ */
 // @route   GET /api/hotels
 // @desc    Get all hotels with filters
 // @access  Public
@@ -52,6 +131,65 @@ router.get('/', optionalAuth, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/hotels/{id}:
+ *   get:
+ *     summary: Get single hotel by ID
+ *     tags: [Hotels]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Hotel ID
+ *     responses:
+ *       200:
+ *         description: Hotel retrieved successfully
+ *       404:
+ *         description: Hotel not found
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/hotels/:id:
+ *   get:
+ *     summary: Get single hotel by ID
+ *     tags: [Hotels]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/hotels/{id}:
+ *   get:
+ *     tags:
+ *       - Hotels
+ *     summary: Get single hotel by ID
+ *     parameters:
+ *      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        description: id parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ */
 // @route   GET /api/hotels/:id
 // @desc    Get single hotel by ID
 // @access  Public
@@ -76,6 +214,50 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/hotels/book:
+ *   post:
+ *     summary: Book a hotel room (for self or for group member if instructor)
+ *     tags: [Hotels]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/hotels/book:
+ *   post:
+ *     tags:
+ *       - Hotels
+ *     summary: Book a hotel room (for self or for group member if instructor)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   POST /api/hotels/book
 // @desc    Book a hotel room (for self or for group member if instructor)
 // @access  Private
@@ -194,6 +376,39 @@ router.post('/book', authenticate, [
   }
 });
 
+/**
+ * @swagger
+ * /api/hotels/my-bookings:
+ *   get:
+ *     summary: Get user's hotel bookings
+ *     tags: [Hotels]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/hotels/my-bookings:
+ *   get:
+ *     tags:
+ *       - Hotels
+ *     summary: Get user's hotel bookings
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   GET /api/hotels/my-bookings
 // @desc    Get user's hotel bookings
 // @access  Private
@@ -220,6 +435,63 @@ router.get('/my-bookings', authenticate, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/hotels/cancel/:bookingId:
+ *   post:
+ *     summary: Cancel a hotel booking
+ *     tags: [Hotels]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: bookingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/hotels/cancel/{bookingId}:
+ *   post:
+ *     tags:
+ *       - Hotels
+ *     summary: Cancel a hotel booking
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *      - in: path
+        name: bookingId
+        required: true
+        schema:
+          type: string
+        description: bookingId parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   POST /api/hotels/cancel/:bookingId
 // @desc    Cancel a hotel booking
 // @access  Private

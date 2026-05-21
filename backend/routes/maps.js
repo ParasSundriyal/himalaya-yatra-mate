@@ -4,6 +4,14 @@ import fs from 'fs';
 import { authenticate } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
+
+/**
+ * @swagger
+ * tags:
+ *   - name: Maps
+ *     description: Offline maps and tile management
+ */
+
 const TILES_ZIP = path.resolve(process.cwd(), 'assets', 'tiles_extracted.zip');
 
 router.get('/info', authenticate, async (_req, res) => {

@@ -5,6 +5,92 @@ import { authenticate, authorize, optionalAuth } from '../middleware/auth.middle
 
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   - name: AI Detection
+ *     description: AI-based vehicle detection and logging
+ */
+
+/**
+ * @swagger
+ * /api/ai-detection/log:
+ *   post:
+ *     summary: Log a vehicle detection
+ *     tags: [AI Detection]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - vehicleNumber
+ *               - detectionType
+ *               - location
+ *               - gate
+ *             properties:
+ *               vehicleNumber:
+ *                 type: string
+ *               detectionType:
+ *                 type: string
+ *                 enum: [entry, exit]
+ *               location:
+ *                 type: string
+ *               gate:
+ *                 type: string
+ *               coordinates:
+ *                 type: object
+ *               imageUrl:
+ *                 type: string
+ *               confidence:
+ *                 type: number
+ *                 minimum: 0
+ *                 maximum: 1
+ *     responses:
+ *       201:
+ *         description: Detection logged successfully
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/ai-detection/log:
+ *   post:
+ *     summary: Log a vehicle detection
+ *     tags: [AI Detection]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/ai-detection/log:
+ *   post:
+ *     tags:
+ *       - AI Detection
+ *     summary: Log a vehicle detection
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ */
 // @route   POST /api/ai-detection/log
 // @desc    Log a vehicle detection
 // @access  Public (Can be called by AI system or admin)
@@ -57,6 +143,37 @@ router.post('/log', [
   }
 });
 
+/**
+ * @swagger
+ * /api/ai-detection:
+ *   get:
+ *     summary: Get detection logs with filters
+ *     tags: [AI Detection]
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/ai-detection:
+ *   get:
+ *     tags:
+ *       - AI Detection
+ *     summary: Get detection logs with filters
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   GET /api/ai-detection
 // @desc    Get detection logs with filters
 // @access  Private (Admin, or optional for viewing stats)
@@ -108,6 +225,31 @@ router.get('/', optionalAuth, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/ai-detection/stats:
+ *   get:
+ *     summary: Get detection statistics
+ *     tags: [AI Detection]
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/ai-detection/stats:
+ *   get:
+ *     tags:
+ *       - AI Detection
+ *     summary: Get detection statistics
+ *     responses:
+ *       200:
+ *         description: Successful response
+ */
 // @route   GET /api/ai-detection/stats
 // @desc    Get detection statistics
 // @access  Public (for dashboard display)
@@ -167,6 +309,63 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/ai-detection/:id/process:
+ *   put:
+ *     summary: Mark detection as processed and link to user/booking
+ *     tags: [AI Detection]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exampleField:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+/**
+ * @swagger
+ * /api/ai-detection/{id}/process:
+ *   put:
+ *     tags:
+ *       - AI Detection
+ *     summary: Mark detection as processed and link to user/booking
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        description: id parameter
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
 // @route   PUT /api/ai-detection/:id/process
 // @desc    Mark detection as processed and link to user/booking
 // @access  Private (Admin)
