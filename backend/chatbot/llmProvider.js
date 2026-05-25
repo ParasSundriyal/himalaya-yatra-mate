@@ -10,9 +10,15 @@ const PROVIDER_CONFIGS = {
     baseUrl: 'https://api.openai.com/v1',
     defaultModel: 'gpt-4o-mini',
   },
-  // Add more providers here (all must be OpenAI-compatible):
-  // anthropic: { baseUrl: '...', defaultModel: '...' },
-  // gemini: { baseUrl: '...', defaultModel: '...' },
+  // Google Gemini via OpenAI-compatible API (https://ai.google.dev/gemini-api/docs/openai)
+  google: {
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    defaultModel: 'gemini-2.0-flash',
+  },
+  gemini: {
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    defaultModel: 'gemini-2.0-flash',
+  },
 };
 
 // ─── Base Provider Class ────────────────────────────────────────────────────
@@ -91,7 +97,7 @@ class LLMProvider {
  * Creates an LLM provider instance based on environment configuration.
  *
  * Env vars:
- *   LLM_PROVIDER  — 'groq' | 'openai'  (default: 'groq')
+ *   LLM_PROVIDER  — 'groq' | 'openai' | 'google' | 'gemini'  (default: 'groq')
  *   LLM_MODEL     — model identifier    (default: provider-specific)
  *   LLM_API_KEY   — API key             (required)
  *   LLM_BASE_URL  — custom base URL     (optional override)
@@ -112,7 +118,14 @@ export function createProvider(overrides = {}) {
   }
 
   const model = overrides.model || process.env.LLM_MODEL || config.defaultModel;
-  const baseUrl = overrides.baseUrl || process.env.LLM_BASE_URL || config.baseUrl;
+  // For built-in providers, ignore LLM_BASE_URL unless it looks like an OpenAI-compat root (ends with /v1 or /openai)
+  const envBase = process.env.LLM_BASE_URL?.trim();
+  const useEnvBase =
+    envBase &&
+    (envBase.endsWith('/v1') ||
+      envBase.endsWith('/openai') ||
+      envBase.includes('/openai/'));
+  const baseUrl = overrides.baseUrl || (useEnvBase ? envBase : config.baseUrl);
 
   return new LLMProvider(apiKey, model, baseUrl);
 }

@@ -62,6 +62,44 @@ def default_medium_response(extra=None):
     return out
 
 
+def rule_based_level(parsed_date, pass_quota_pct):
+    """When ML model is missing, use season + pass utilization (not flat Medium)."""
+    if not in_season(parsed_date):
+        return "Low", 0.45
+
+    month = parsed_date.month
+    day = parsed_date.day
+    score = 1.0
+
+    if month == 5 or (month == 6 and day <= 20):
+        score += 0.45
+    elif month in (6, 7, 8):
+        score += 0.25
+    if parsed_date.weekday() >= 5:
+        score += 0.1
+    if festival_check(parsed_date):
+        score += 0.15
+
+    pq = float(pass_quota_pct)
+    if pq >= 0.72:
+        score += 0.55
+    elif pq >= 0.45:
+        score += 0.35
+    elif pq >= 0.2:
+        score += 0.15
+    elif month == 5 and day <= 21:
+        score += 0.35
+
+    if score < 0.7:
+        level = "Low"
+    elif score < 1.45:
+        level = "Medium"
+    else:
+        level = "High"
+    conf = min(0.82, 0.5 + abs(score - 1.0) * 0.15)
+    return level, conf
+
+
 def build_features(parsed_date, weather_code, pass_quota_pct):
     month = parsed_date.month
     day_of_week = parsed_date.weekday()
@@ -109,8 +147,8 @@ def predict_one(payload):
     if not in_season(parsed):
         return {
             "error": "outside_season",
-            "level": "Medium",
-            "confidence": 0.5,
+            "level": "Low",
+            "confidence": 0.7,
             "dham": dham,
             "date": date_str,
         }
@@ -118,13 +156,15 @@ def predict_one(payload):
     X, feats = build_features(parsed, weather_code, pass_quota_pct)
 
     if model is None or label_encoder is None:
+        level, confidence = rule_based_level(parsed, pass_quota_pct)
         return {
             "dham": dham,
             "date": date_str,
-            "level": "Medium",
-            "confidence": 0.5,
-            "breakdown": {"Low": 0.33, "Medium": 0.34, "High": 0.33},
+            "level": level,
+            "confidence": confidence,
+            "breakdown": {"Low": 0.2, "Medium": 0.35, "High": 0.45} if level == "High" else None,
             "features_used": feats,
+            "source": "rule_based",
         }
 
     pred = model.predict(X)[0]

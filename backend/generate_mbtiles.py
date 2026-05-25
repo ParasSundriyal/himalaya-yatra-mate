@@ -55,9 +55,27 @@ TILE_SERVERS = [
     "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
 ]
 
+# OSM tile policy: https://operations.osmfoundation.org/policies/tiles/
 HEADERS = {
-    "User-Agent": "ChardhamYatraApp/1.0 (BTech student project; offline map)"
+    "User-Agent": "ChardhamYatra/1.0 (Uttarakhand offline pilgrimage map; student project)",
+    "Accept": "image/png",
+    "Referer": "https://www.openstreetmap.org/",
 }
+
+# OSM 403 “Access blocked” page saved as a PNG during bad bulk downloads
+BLOCKED_TILE_SIZE = 6987
+
+
+def is_valid_png_tile(data: bytes) -> bool:
+    if not data or len(data) < 500:
+        return False
+    if not data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return False
+    if len(data) == BLOCKED_TILE_SIZE:
+        return False
+    if b"Access blocked" in data or b"osm.wiki/Blocked" in data:
+        return False
+    return True
 
 # ─── Regions ─────────────────────────────────────────────────────────────────
 # (name, south, west, north, east, min_zoom, max_zoom)
@@ -140,10 +158,10 @@ def download_tile(z, x, y):
 
     for attempt in range(MAX_RETRIES):
         try:
-            r = session.get(url, timeout=REQUEST_TIMEOUT)
-            if r.status_code == 200:
+            r = session.get(url, timeout=REQUEST_TIMEOUT, headers=HEADERS)
+            if r.status_code == 200 and is_valid_png_tile(r.content):
                 return (z, x, tms_y, r.content)
-            elif r.status_code == 429:
+            elif r.status_code in (403, 429):
                 # Rate limited — back off
                 time.sleep(2 ** attempt + random.uniform(0, 1))
             elif r.status_code == 404:
@@ -368,7 +386,7 @@ def main():
     print("\nNext steps:")
     print("  1. Copy to backend/assets/uttarakhand_chardham.mbtiles")
     print("  2. Restart your Express server")
-    print("  3. Re-download in the app → offline map will show full terrain")
+    print("  3. In the app: Map → Download → saves to maps/uttarakhand_chardham.mbtiles")
 
     conn.close()
 

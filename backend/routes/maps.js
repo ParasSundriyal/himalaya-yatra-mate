@@ -12,33 +12,21 @@ const router = express.Router();
  *     description: Offline maps and tile management
  */
 
-const TILES_ZIP = path.resolve(process.cwd(), 'assets', 'tiles_extracted.zip');
+const ASSETS_DIR = path.resolve(process.cwd(), 'assets');
+const MBTILES_FILE = path.join(ASSETS_DIR, 'uttarakhand_chardham.mbtiles');
+const TILES_ZIP = path.join(ASSETS_DIR, 'tiles_extracted.zip');
 
-router.get('/info', authenticate, async (_req, res) => {
-  try {
-    const stat = await fs.promises.stat(TILES_ZIP);
-    return res.json({
-      fileName: 'tiles_extracted.zip',
-      fileSizeMB: Math.round((stat.size / 1024 / 1024) * 10) / 10,
-      fileSizeBytes: stat.size,
-      region: 'Uttarakhand — all 4 Char Dham regions',
-      zoomLevels: '8 to 16',
-      format: 'raster PNG tiles',
-      lastUpdated: stat.mtime.toISOString(),
-    });
-  } catch {
-    return res.status(404).json({ error: 'Map file not found on server.' });
-  }
-});
+async function statFile(filePath) {
+  return fs.promises.stat(filePath);
+}
 
-router.get('/tiles.zip', authenticate, async (req, res) => {
-  try {
-    const stat = await fs.promises.stat(TILES_ZIP);
+function streamFile(req, res, filePath, contentType) {
+  return statFile(filePath).then((stat) => {
     const total = stat.size;
     const range = req.headers.range;
 
     res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Type', contentType);
 
     if (range) {
       const [startStr, endStr] = range.replace(/bytes=/, '').split('-');
@@ -49,16 +37,69 @@ router.get('/tiles.zip', authenticate, async (req, res) => {
       res.status(206);
       res.setHeader('Content-Range', `bytes ${start}-${end}/${total}`);
       res.setHeader('Content-Length', chunk);
-      fs.createReadStream(TILES_ZIP, { start, end }).pipe(res);
+      fs.createReadStream(filePath, { start, end }).pipe(res);
       return;
     }
 
     res.setHeader('Content-Length', total);
-    fs.createReadStream(TILES_ZIP).pipe(res);
+    fs.createReadStream(filePath).pipe(res);
+  });
+}
+
+router.get('/info', authenticate, async (_req, res) => {
+  const base = {
+    region: 'Uttarakhand — all 4 Char Dham regions',
+    zoomLevels: '8 to 16',
+  };
+
+  try {
+    const stat = await statFile(MBTILES_FILE);
+    return res.json({
+      ...base,
+      packageType: 'mbtiles',
+      fileName: 'uttarakhand_chardham.mbtiles',
+      fileSizeMB: Math.round((stat.size / 1024 / 1024) * 10) / 10,
+      fileSizeBytes: stat.size,
+      format: 'MBTiles (raster PNG)',
+      lastUpdated: stat.mtime.toISOString(),
+    });
+  } catch {
+    // fall through
+  }
+
+  try {
+    const stat = await statFile(TILES_ZIP);
+    return res.json({
+      ...base,
+      packageType: 'zip',
+      fileName: 'tiles_extracted.zip',
+      fileSizeMB: Math.round((stat.size / 1024 / 1024) * 10) / 10,
+      fileSizeBytes: stat.size,
+      format: 'PNG tiles (zip)',
+      lastUpdated: stat.mtime.toISOString(),
+    });
+  } catch {
+    return res.status(404).json({
+      error: 'Map file not found. Add uttarakhand_chardham.mbtiles or tiles_extracted.zip to backend/assets/.',
+    });
+  }
+});
+
+router.get('/mbtiles', authenticate, async (req, res) => {
+  try {
+    await streamFile(req, res, MBTILES_FILE, 'application/octet-stream');
+  } catch {
+    res.status(404).json({ error: 'MBTiles file not found on server.' });
+  }
+});
+
+/** @deprecated Legacy PNG tile zip — use /mbtiles instead */
+router.get('/tiles.zip', authenticate, async (req, res) => {
+  try {
+    await streamFile(req, res, TILES_ZIP, 'application/zip');
   } catch {
     res.status(404).json({ error: 'Map file not found.' });
   }
 });
 
 export default router;
-

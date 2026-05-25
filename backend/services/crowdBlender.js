@@ -4,6 +4,17 @@ import admin from 'firebase-admin';
 import { getGeofenceCount } from './geofenceService.js';
 import { getCachedScrapeCounts } from './scraperService.js';
 import { getFirestoreDb } from './firebaseAdmin.js';
+import { getPassCrowdStats } from './passCrowdStats.js';
+import {
+  levelToScore,
+  scoreToLevel,
+  scoreToCrowdPct,
+  getSeasonCrowdScore,
+  seasonScoreToLevel,
+  passUtilizationToLevel,
+  waitMinutesForCrowd,
+  isDhamInSeason,
+} from './crowdSignals.js';
 
 const { FieldValue } = admin.firestore;
 
@@ -12,38 +23,18 @@ const ML_BASE =
 
 const DHAMS = ['yamunotri', 'gangotri', 'kedarnath', 'badrinath'];
 
-export function levelToScore(level) {
-  if (level === 'Low') return 0;
-  if (level === 'High') return 2;
-  return 1;
-}
-
-export function scoreToLevel(score) {
-  if (score < 0.6) return 'Low';
-  if (score < 1.4) return 'Medium';
-  return 'High';
-}
+export { levelToScore, scoreToLevel };
 
 function gpsCountToLevel(count) {
-  if (count < 40) return 'Low';
-  if (count <= 120) return 'Medium';
+  if (count < 25) return 'Low';
+  if (count <= 90) return 'Medium';
   return 'High';
 }
 
 function scrapeCountToLevel(n) {
-  if (n < 3000) return 'Low';
-  if (n <= 8000) return 'Medium';
+  if (n < 2500) return 'Low';
+  if (n <= 7000) return 'Medium';
   return 'High';
-}
-
-function randomInt(min, max) {
-  return min + Math.floor(Math.random() * (max - min + 1));
-}
-
-function waitMinutesForLevel(level) {
-  if (level === 'Low') return randomInt(15, 45);
-  if (level === 'Medium') return randomInt(60, 150);
-  return randomInt(180, 300);
 }
 
 export async function getMLPrediction(dham, date, weatherCode, passQuotaPct) {
@@ -56,53 +47,63 @@ export async function getMLPrediction(dham, date, weatherCode, passQuotaPct) {
         weather_code: weatherCode,
         pass_quota_pct: passQuotaPct,
       },
-      { timeout: 3000 },
+      { timeout: 5000 },
     );
     if (data?.error === 'outside_season') {
-      return { level: data.level || 'Medium', confidence: data.confidence ?? 0.5 };
+      return {
+        level: data.level || seasonScoreToLevel(getSeasonCrowdScore(dham, date)),
+        confidence: data.confidence ?? 0.55,
+      };
     }
     return {
       level: data.level || 'Medium',
-      confidence:
-        typeof data.confidence === 'number' ? data.confidence : 0.5,
+      confidence: typeof data.confidence === 'number' ? data.confidence : 0.5,
     };
   } catch {
-    return { level: 'Medium', confidence: 0.5 };
+    const seasonScore = getSeasonCrowdScore(dham, date);
+    return {
+      level: seasonScoreToLevel(seasonScore),
+      confidence: 0.45,
+      source: 'season_fallback',
+    };
   }
 }
 
-function computeWeights(validGps, validScrape, validMl) {
-  if (validGps && validScrape && validMl) {
-    return { gps: 0.4, scrape: 0.3, ml: 0.3 };
+/**
+ * Dynamic weights — pass + season always considered during yatra season.
+ */
+function computeWeights(flags) {
+  const { gps, scrape, ml, season } = flags;
+  const parts = [];
+
+  if (gps) parts.push(['gps', 0.32]);
+  if (scrape) parts.push(['scrape', 0.22]);
+  if (ml) parts.push(['ml', 0.18]);
+  parts.push(['pass', 0.18]);
+  if (season) parts.push(['season', 0.28]);
+
+  const rawSum = parts.reduce((s, [, w]) => s + w, 0);
+  const weights = { gps: 0, scrape: 0, ml: 0, pass: 0, season: 0 };
+  for (const [k, w] of parts) {
+    weights[k] = w / rawSum;
   }
-  if (validGps && validScrape && !validMl) {
-    return { gps: 0.55, scrape: 0.45, ml: 0 };
-  }
-  if (validGps && !validScrape && validMl) {
-    return { gps: 0.5, scrape: 0, ml: 0.5 };
-  }
-  if (!validGps && validScrape && validMl) {
-    return { gps: 0, scrape: 0.45, ml: 0.55 };
-  }
-  if (validGps && !validScrape && !validMl) {
-    return { gps: 1, scrape: 0, ml: 0 };
-  }
-  if (!validGps && validScrape && !validMl) {
-    return { gps: 0, scrape: 1, ml: 0 };
-  }
-  if (!validGps && !validScrape && validMl) {
-    return { gps: 0, scrape: 0, ml: 1 };
-  }
-  return null;
+  return weights;
 }
 
 export async function blendCrowdData(dham, date) {
   const dhamKey = String(dham || '').toLowerCase();
+  const inSeason = isDhamInSeason(dhamKey, date);
+
+  const passStats = await getPassCrowdStats(dhamKey, date);
+  const passQuotaPct = passStats.utilization;
+  const passLevel = passUtilizationToLevel(passQuotaPct, dhamKey, date);
+  const seasonScore = getSeasonCrowdScore(dhamKey, date);
+  const seasonLevel = seasonScoreToLevel(seasonScore);
 
   const settled = await Promise.allSettled([
     getGeofenceCount(dhamKey),
     getCachedScrapeCounts(),
-    getMLPrediction(dhamKey, date, 0, 0.5),
+    getMLPrediction(dhamKey, date, 0, passQuotaPct),
   ]);
 
   let gpsResult = null;
@@ -132,20 +133,15 @@ export async function blendCrowdData(dham, date) {
     mlResult &&
     ['Low', 'Medium', 'High'].includes(mlResult.level);
 
-  const weights = computeWeights(validGps, validScrape, validMl);
-  if (!weights) {
-    return {
-      dham: dhamKey,
-      date,
-      finalLevel: 'Medium',
-      waitTimeMin: waitMinutesForLevel('Medium'),
-      confidence: 0.3,
-      sources: { gps: null, scrape: null, ml: null },
-      weights: { gps: 0, scrape: 0, ml: 0 },
-      source: 'default_fallback',
-      updatedAt: new Date().toISOString(),
-    };
-  }
+  const validPass = true;
+  const validSeason = inSeason;
+
+  const weights = computeWeights({
+    gps: validGps,
+    scrape: validScrape,
+    ml: validMl,
+    season: validSeason,
+  });
 
   const sources = {
     gps: validGps
@@ -156,6 +152,15 @@ export async function blendCrowdData(dham, date) {
       : null,
     ml: validMl
       ? { level: mlResult.level, confidence: mlResult.confidence }
+      : null,
+    pass: {
+      issued: passStats.issued,
+      quota: passStats.quota,
+      utilization: Math.round(passQuotaPct * 1000) / 1000,
+      level: passLevel,
+    },
+    season: validSeason
+      ? { score: Math.round(seasonScore * 100) / 100, level: seasonLevel }
       : null,
   };
 
@@ -169,20 +174,43 @@ export async function blendCrowdData(dham, date) {
   if (validMl) {
     blendedScore += weights.ml * levelToScore(sources.ml.level);
   }
+  blendedScore += weights.pass * levelToScore(sources.pass.level);
+  if (validSeason) {
+    blendedScore += weights.season * seasonScore;
+  }
+
+  // Off-season with no live signals
+  if (!validSeason && !validGps && !validScrape) {
+    blendedScore = levelToScore(passLevel);
+  }
 
   const finalLevel = scoreToLevel(blendedScore);
-  const waitTimeMin = waitMinutesForLevel(finalLevel);
-  const confidence =
-    validMl && mlResult ? mlResult.confidence : 0.5;
+  const crowdPct = scoreToCrowdPct(blendedScore);
+  const waitTimeMin = waitMinutesForCrowd(
+    finalLevel,
+    passQuotaPct,
+    gpsCount,
+  );
+  const confidence = validMl && mlResult?.confidence
+    ? Math.min(0.92, mlResult.confidence + (validGps ? 0.05 : 0) + (passQuotaPct > 0.1 ? 0.05 : 0))
+    : validGps || validScrape
+      ? 0.72
+      : inSeason
+        ? 0.65
+        : 0.45;
 
   return {
     dham: dhamKey,
     date,
     finalLevel,
+    crowdPct,
+    blendedScore: Math.round(blendedScore * 100) / 100,
     waitTimeMin,
-    confidence,
+    confidence: Math.round(confidence * 100) / 100,
     sources,
     weights,
+    inSeason,
+    source: validGps || validScrape ? 'blended_live' : inSeason ? 'season_pass_model' : 'off_season',
     updatedAt: new Date().toISOString(),
   };
 }

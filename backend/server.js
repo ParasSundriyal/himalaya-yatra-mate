@@ -50,6 +50,8 @@ const swaggerOptions = {
       {
         url: `http://localhost:${PORT}`,
         description: 'Development server',
+        url: 'https://himalaya-yatra-mate-etw5.vercel.app/',
+        description: 'Production server',
       },
     ],
     components: {

@@ -7,7 +7,7 @@
 ## Architecture Overview
 
 ```
-User Message
+User Messageo
      │
      ▼
 ┌──────────────┐

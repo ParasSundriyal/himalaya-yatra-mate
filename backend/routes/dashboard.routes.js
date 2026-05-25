@@ -4,6 +4,16 @@ import DhamPass from '../models/DhamPass.model.js';
 import { predictCrowd } from '../utils/crowdPredict.js';
 import { getOpenWeatherApiKey } from '../services/weatherService.js';
 import { getFirestoreDb } from '../services/firebaseAdmin.js';
+import {
+  scoreToCrowdPct,
+  crowdColorForLevel,
+  levelToScore,
+  scoreToLevel,
+  passUtilizationToLevel,
+  getSeasonCrowdScore,
+  waitMinutesForCrowd,
+} from '../services/crowdSignals.js';
+import { getPassCrowdStats } from '../services/passCrowdStats.js';
 
 const router = express.Router();
 
@@ -40,10 +50,21 @@ async function fetchTemperature(lat, lon) {
   }
 }
 
-function crowdBarFromLevel(level) {
-  if (level === 'High') return { level: 'High', pct: 90, color: '#DC2626' };
-  if (level === 'Low') return { level: 'Low', pct: 30, color: '#059669' };
-  return { level: 'Medium', pct: 60, color: '#D97706' };
+function crowdBarFromBlend(level, firestoreDoc, passUtilization = 0) {
+  let pct =
+    typeof firestoreDoc?.crowdPct === 'number'
+      ? firestoreDoc.crowdPct
+      : typeof firestoreDoc?.blendedScore === 'number'
+        ? scoreToCrowdPct(firestoreDoc.blendedScore)
+        : scoreToCrowdPct(levelToScore(level));
+  if (passUtilization >= 0.7 && pct < 75) {
+    pct = Math.max(pct, 78);
+  }
+  return {
+    level,
+    pct: Math.min(96, Math.max(12, Math.round(pct))),
+    color: crowdColorForLevel(level),
+  };
 }
 
 function normCrowdLevel(raw) {
@@ -93,37 +114,48 @@ router.get('/live', async (req, res) => {
         status: { $in: ['active', 'used'] },
       });
 
+      const dhamKey = CROWD_DOC_ID[dham];
+      const passStats = await getPassCrowdStats(dhamKey, dateStr);
+      const passUtil = passStats.utilization;
+
       let level = 'Medium';
       let confidence = 0.5;
       let waitMins = 30;
+      let fireDoc = null;
       const snap = fireSnaps[i];
       if (snap?.exists) {
-        const fd = snap.data();
-        level = normCrowdLevel(fd.finalLevel);
+        fireDoc = snap.data();
+        level = normCrowdLevel(fireDoc.finalLevel);
         confidence =
-          typeof fd.confidence === 'number' ? fd.confidence : 0.5;
+          typeof fireDoc.confidence === 'number' ? fireDoc.confidence : 0.65;
         waitMins =
-          typeof fd.waitTimeMin === 'number'
-            ? fd.waitTimeMin
-            : level === 'High'
-              ? 120
-              : level === 'Low'
-                ? 25
-                : 45;
+          typeof fireDoc.waitTimeMin === 'number'
+            ? fireDoc.waitTimeMin
+            : waitMinutesForCrowd(level, passUtil, fireDoc.sources?.gps?.count ?? 0);
       } else {
-        const pred = await predictCrowd({
-          dham: CROWD_DOC_ID[dham],
-          date: dateStr,
-          weather_code: 0,
-          pass_quota_pct: 0.5,
-        });
-        level = pred.level;
-        confidence = pred.confidence;
-        waitMins =
-          level === 'High' ? 120 : level === 'Low' ? 25 : 45;
+        const seasonScore = getSeasonCrowdScore(dhamKey, dateStr);
+        const passLevel = passUtilizationToLevel(passUtil, dhamKey, dateStr);
+        let blended = levelToScore(passLevel) * 0.45 + seasonScore * 0.55;
+        try {
+          const pred = await predictCrowd({
+            dham: dhamKey,
+            date: dateStr,
+            weather_code: 0,
+            pass_quota_pct: passUtil,
+          });
+          if (pred?.level) {
+            blended = blended * 0.6 + levelToScore(pred.level) * 0.4;
+            confidence = pred.confidence ?? 0.55;
+          }
+        } catch {
+          confidence = 0.6;
+        }
+        level = scoreToLevel(blended);
+        waitMins = waitMinutesForCrowd(level, passUtil, 0);
+        fireDoc = { blendedScore: blended, crowdPct: scoreToCrowdPct(blended) };
       }
 
-      const bar = crowdBarFromLevel(level);
+      const bar = crowdBarFromBlend(level, fireDoc, passUtil);
       const coords = DHAM_COORDS[dham];
       const temp = await fetchTemperature(coords.lat, coords.lon);
       const roadStatus = level === 'High' ? 'caution' : 'open';
@@ -132,11 +164,14 @@ router.get('/live', async (req, res) => {
         dham,
         crowd: bar,
         passesToday: issuedToday,
+        passQuota: passStats.quota,
+        passUtilizationPct: Math.round(passUtil * 100),
         temperatureC: temp.c,
         weatherSource: temp.source,
         waitTimeMins: waitMins,
         roadStatus,
         predictionConfidence: confidence,
+        dataSource: fireDoc?.source || (snap?.exists ? 'firestore' : 'computed'),
       });
     }
 

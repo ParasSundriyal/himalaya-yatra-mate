@@ -1,5 +1,12 @@
 import axios from 'axios';
 import { getFirestoreDb } from './firebaseAdmin.js';
+import { getPassCrowdStats } from './passCrowdStats.js';
+import {
+  getSeasonCrowdScore,
+  scoreToLevel,
+  passUtilizationToLevel,
+  levelToScore,
+} from './crowdSignals.js';
 
 const DHAMS = ['Yamunotri', 'Gangotri', 'Kedarnath', 'Badrinath'];
 
@@ -80,31 +87,40 @@ export async function fetchCrowdMap(startDateStr) {
     }
 
     if (!usedFirestore) {
+      const dhamKey = DOC_ID[dham];
+      const passStats = await getPassCrowdStats(dhamKey, startDateStr);
       try {
         const { data } = await axios.post(
           `${ML_URL}/predict`,
           {
-            dham: DOC_ID[dham],
+            dham: dhamKey,
             date: startDateStr,
             weather_code: 0,
-            pass_quota_pct: 0.5,
+            pass_quota_pct: passStats.utilization,
           },
           { timeout: 5000 },
         );
-        const lv = data.level || 'Medium';
+        const lv = data.level || scoreToLevel(
+          getSeasonCrowdScore(dhamKey, startDateStr) * 0.55
+            + (passUtilizationToLevel(passStats.utilization, dhamKey, startDateStr) === 'High' ? 2 : 1) * 0.45,
+        );
         crowdMap[dham] = {
           level: lv,
           waitTimeMin: data.waitTimeMin ?? 45,
           timestamp: new Date(),
         };
       } catch {
+        const season = getSeasonCrowdScore(dhamKey, startDateStr);
+        const passLv = passUtilizationToLevel(passStats.utilization, dhamKey, startDateStr);
+        const blended =
+          season * 0.55 + levelToScore(passLv) * 0.45;
         crowdMap[dham] = {
-          level: 'Medium',
+          level: scoreToLevel(blended),
           waitTimeMin: 45,
           timestamp: new Date(),
         };
         alerts.push(
-          `Crowd data unavailable for ${dham}; using estimated levels.`,
+          `Crowd data unavailable for ${dham}; using season + pass estimate.`,
         );
       }
     }
