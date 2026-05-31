@@ -11,8 +11,8 @@ const accommodationTypeMap = {
 };
 
 const budgetPerNightCap = {
-  budget: 1500,
-  midrange: 4000,
+  budget: 2200,
+  midrange: 5500,
   premium: 999999,
 };
 

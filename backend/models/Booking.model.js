@@ -36,7 +36,13 @@ const bookingSchema = new mongoose.Schema({
     vehicleNumber: String,
     entryTime: Date,
     exitTime: Date,
-    qrCode: String
+    qrCode: String,
+    /** Set when admin scans QR at entry — starts pilgrim timer */
+    scannedAt: Date,
+    scannedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
   },
   // Hotel booking details
   hotel: {

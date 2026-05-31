@@ -66,10 +66,19 @@ const swaggerOptions = {
     },
   },
   // Path to the API docs (it will look inside your routes folder for JSDoc comments)
-  apis: ['./routes/*.js'], 
+  apis: ['./routes/*.js'],
+  failOnErrors: false,
 };
 
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
+const enableSwaggerDocs = process.env.ENABLE_SWAGGER_DOCS === 'true';
+let swaggerSpec = null;
+if (enableSwaggerDocs) {
+  try {
+    swaggerSpec = swaggerJsdoc(swaggerOptions);
+  } catch (e) {
+    console.error('⚠️ Swagger generation failed. Continuing without /api-docs:', e.message);
+  }
+}
 // --------------------------------
 
 // Middleware
@@ -82,7 +91,8 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:8080',
-  'http://127.0.0.1:3000'
+  'http://127.0.0.1:3000',
+  'http://192.168.29.85:5000',
 ].filter(Boolean);
 
 app.use(cors({
@@ -102,8 +112,10 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// --- 3. Serve Swagger UI ---
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// --- 3. Serve Swagger UI (optional) ---
+if (swaggerSpec) {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+}
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/himalaya-yatra';
@@ -114,7 +126,17 @@ mongoose
     console.log('✅ MongoDB connected successfully');
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📖 API Docs available at http://localhost:${PORT}/api-docs`);
+      const llmProvider = process.env.LLM_PROVIDER || 'groq';
+      const llmModel = process.env.LLM_MODEL || '(provider default)';
+      const llmReady = process.env.LLM_API_KEY ? 'yes' : 'NO — set LLM_API_KEY';
+      console.log(`🤖 Chatbot LLM: ${llmProvider} / ${llmModel} (key: ${llmReady})`);
+      if (swaggerSpec) {
+        console.log(`📖 API Docs available at http://localhost:${PORT}/api-docs`);
+      } else if (enableSwaggerDocs) {
+        console.log('⚠️ API Docs disabled due to Swagger parse errors.');
+      } else {
+        console.log('ℹ️ Swagger docs disabled (set ENABLE_SWAGGER_DOCS=true to enable).');
+      }
       
       scheduleScraperCron();
       scheduleCrowdBlendCron();

@@ -110,7 +110,7 @@ export const DHAM_INFO = {
     ponyAvailable: true,
     helicopterAvailable: true,
     helicopterBaseLocation: 'Phata / Sersi / Guptkashi',
-    helicopterPrice: 5500,
+    helicopterPrice: 6500,
     mandatoryStopover: 'Guptkashi or Rudraprayag',
     darshaTiming: '04:00 - 12:00, 15:00 - 21:00',
     bestVisitTime: 'pre-dawn for abhishek',

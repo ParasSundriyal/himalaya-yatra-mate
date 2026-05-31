@@ -9,11 +9,14 @@ import CheckpointPass from '../models/CheckpointPass.model.js';
 import User from '../models/User.model.js';
 import { getFirestoreDb } from '../services/firebaseAdmin.js';
 import { DHAM_INFO, DHAM_KEYS } from '../constants/dhamData.js';
+import { runWebSearch } from './webSearchService.js';
+import { fetchCurrentWeatherForDham } from './weatherTool.js';
 import QRCode from 'qrcode';
 
-const BACKEND_BASE = `http://localhost:${process.env.PORT || 5000}`;
+const BACKEND_BASE =
+  process.env.BACKEND_BASE_URL ||
+  `http://127.0.0.1:${process.env.PORT || 5000}`;
 const ML_BASE = process.env.ML_SERVICE_URL || 'http://localhost:5001';
-const FIRECRAWL_URL = 'https://api.firecrawl.dev/v1/search';
 
 // ─── Tool Definitions (OpenAI function-calling format) ──────────────────────
 
@@ -130,6 +133,20 @@ export const TOOL_DEFINITIONS = [
       name: 'get_dashboard_live',
       description: 'Get live dashboard data for all Dhams: crowd level, temperature, passes issued, wait time, road status. Best tool for crowd + weather questions.',
       parameters: { type: 'object', properties: {}, required: [] },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_weather',
+      description: 'Get live weather for a Dham: temperature, condition, clouds, humidity, wind, rain chance. Use for weather or mausam questions.',
+      parameters: {
+        type: 'object',
+        properties: {
+          dhamName: { type: 'string', description: 'yamunotri, gangotri, kedarnath, or badrinath' },
+        },
+        required: ['dhamName'],
+      },
     },
   },
   {
@@ -306,6 +323,8 @@ export async function executeTool(name, args, context = {}) {
         return await execGetCrowdPredict(args);
       case 'get_dashboard_live':
         return await execGetDashboardLive();
+      case 'get_weather':
+        return await fetchCurrentWeatherForDham(args.dhamName || args.dham);
       case 'get_dham_status':
         return await execGetDhamStatus();
       case 'get_nearby_attractions':
@@ -434,7 +453,36 @@ async function execGetDashboardLive() {
     const { data } = await axios.get(`${BACKEND_BASE}/api/dashboard/live`, { timeout: 10000 });
     return data;
   } catch (e) {
-    return { error: 'Dashboard unavailable: ' + e.message };
+    const db = getFirestoreDb();
+    if (!db) {
+      return { error: 'Dashboard unavailable: ' + e.message };
+    }
+    try {
+      const snaps = await Promise.all(
+        DHAMS.map((dham) => db.collection('crowd_data').doc(dham).get()),
+      );
+      const cards = snaps.map((snap, i) => {
+        const dham = DHAMS[i];
+        const doc = snap.exists ? snap.data() : {};
+        return {
+          dham,
+          crowd: {
+            level: doc?.finalLevel || doc?.level || 'Medium',
+            pct: typeof doc?.crowdPct === 'number' ? Math.round(doc.crowdPct) : null,
+          },
+          waitTimeMins: doc?.waitTimeMin ?? null,
+          temperatureC: doc?.tempC ?? null,
+        };
+      });
+      return {
+        lastUpdated: new Date().toISOString(),
+        cards,
+        source: 'firestore_fallback',
+        warning: 'Dashboard route unavailable; using fallback crowd snapshots.',
+      };
+    } catch (fallbackErr) {
+      return { error: 'Dashboard unavailable: ' + fallbackErr.message };
+    }
   }
 }
 
@@ -462,33 +510,15 @@ async function execGetDhamStatus() {
   return out;
 }
 
-async function execGetNearbyAttractions({ dhamName }) {
-  const k = String(dhamName).toLowerCase();
+async function execGetNearbyAttractions({ dhamName, dham } = {}) {
+  const k = String(dhamName || dham || '').toLowerCase();
   const info = DHAM_INFO[k];
   if (!info) return { error: 'Unknown dham' };
   return { dham: k, displayName: info.displayName, nearbyAttractions: info.nearbyAttractions, crowdAlternatives: info.crowdAlternatives };
 }
 
-async function execWebSearch({ query }) {
-  const apiKey = process.env.FIRECRAWL_API_KEY;
-  if (!apiKey) return { error: 'FIRECRAWL_API_KEY not set. Cannot search the web.' };
-  try {
-    const { data } = await axios.post(FIRECRAWL_URL, {
-      query: `${query} Chardham Yatra`,
-      limit: 3,
-      scrapeOptions: { formats: ['markdown'] },
-    }, {
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      timeout: 15000,
-    });
-    const results = (data.data || []).map(r => ({
-      title: r.title, url: r.url,
-      snippet: (r.markdown || r.description || '').slice(0, 500),
-    }));
-    return { success: true, results };
-  } catch (e) {
-    return { error: 'Web search failed: ' + e.message };
-  }
+async function execWebSearch({ query } = {}) {
+  return runWebSearch(query);
 }
 
 // ─── Authenticated user tools ───────────────────────────────────────────────

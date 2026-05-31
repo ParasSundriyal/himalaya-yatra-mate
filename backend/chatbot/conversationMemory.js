@@ -48,6 +48,28 @@ export function getHistory(userId) {
 }
 
 /**
+ * Trimmed history for LLM calls — last 4 messages, assistant JSON reduced to summary.
+ */
+export function getCompactHistory(userId, maxMessages = 4) {
+  const history = getHistory(userId);
+  return history.slice(-maxMessages).map((msg) => {
+    if (msg.role !== 'assistant' || typeof msg.content !== 'string') return msg;
+    try {
+      const parsed = JSON.parse(msg.content);
+      if (parsed?.summary) {
+        return { role: 'assistant', content: parsed.summary };
+      }
+    } catch {
+      /* plain text */
+    }
+    if (msg.content.length > 240) {
+      return { role: 'assistant', content: msg.content.slice(0, 240) + '…' };
+    }
+    return msg;
+  });
+}
+
+/**
  * Append messages to a user's conversation history.
  * @param {string} userId
  * @param {Array} messages — OpenAI-format messages to append

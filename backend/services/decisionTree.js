@@ -7,6 +7,12 @@ import {
   DHAM_KEYS,
   displayNameForDham,
 } from '../constants/dhamData.js';
+import { seasonalWeatherForDate } from './weatherService.js';
+import {
+  estimateDayCost,
+  KEDARNATH_HELI_ONE_WAY_INR,
+  KEDARNATH_PONY_ONE_WAY_INR,
+} from '../constants/itineraryCostReference.js';
 
 const DHAM_DISPLAY_ORDER = ['Yamunotri', 'Gangotri', 'Kedarnath', 'Badrinath'];
 const KEY_TO_DISPLAY = {
@@ -16,11 +22,16 @@ const KEY_TO_DISPLAY = {
   badrinath: 'Badrinath',
 };
 
-const ACC_COST = {
-  budget: { accommodation: 800, meals: 400, local: 300 },
-  midrange: { accommodation: 2000, meals: 700, local: 500 },
-  premium: { accommodation: 5000, meals: 1200, local: 800 },
-};
+function accTier(accommodation) {
+  return accommodation === 'budget' || accommodation === 'midrange' || accommodation === 'premium'
+    ? accommodation
+    : 'midrange';
+}
+
+/** Legacy helper — prefer estimateDayCost(dayType, tier) */
+function dailyBaseCost(accommodation) {
+  return estimateDayCost('dham_visit', accTier(accommodation));
+}
 
 function normLevel(l) {
   if (!l) return 'Medium';
@@ -150,26 +161,27 @@ export function checkCrowdAndSuggestAlternatives(dhamKey, crowdLevel, _date) {
   };
 }
 
-function dailyBaseCost(accommodation) {
-  const tier =
-    accommodation === 'budget' || accommodation === 'midrange' || accommodation === 'premium'
-      ? accommodation
-      : 'midrange';
-  const c = ACC_COST[tier];
-  return c.accommodation + c.meals + c.local;
-}
-
 function weatherForDhamOnDate(weatherMap, dhamDisplay, dateStr) {
   const m = weatherMap[dhamDisplay]?.[dateStr];
   if (m) {
     return {
-      avgTempC: m.avgTempC ?? 10,
+      avgTempC: m.avgTempC ?? 12,
       condition: m.condition ?? 'Clouds',
       rainMm: m.rainMm ?? 0,
-      windKmh: m.windKmh ?? 15,
+      windKmh: m.windKmh ?? 16,
+      _source: m._source,
     };
   }
-  return { avgTempC: 10, condition: 'Clouds', rainMm: 0, windKmh: 15 };
+  const s = seasonalWeatherForDate(dateStr);
+  return { ...s, _source: 'seasonal' };
+}
+
+function crowdLevelForDhamOnDate(crowdMap, dhamDisplay, dateStr) {
+  const entry = crowdMap[dhamDisplay];
+  if (!entry) return null;
+  const byDay = entry.byDate?.[dateStr];
+  if (byDay?.level) return normLevel(byDay.level);
+  return entry.level ? normLevel(entry.level) : null;
 }
 
 export function computeTotalDays(pace, sideTrips) {
@@ -177,7 +189,7 @@ export function computeTotalDays(pace, sideTrips) {
   return base + (sideTrips ? 2 : 0);
 }
 
-function singleTripDays(dhamKey, pace) {
+export function singleTripDays(dhamKey, pace) {
   const k = String(dhamKey).toLowerCase();
   const isKed = k === 'kedarnath';
   if (pace === 'express') return isKed ? 2 : 2;
@@ -247,6 +259,7 @@ function enrichDayRow(
   age,
   groupSize,
   vehicle,
+  accommodation = 'midrange',
 ) {
   const dham = row.dham;
   const w = dham
@@ -254,18 +267,24 @@ function enrichDayRow(
     : { avgTempC: 12, condition: 'Clouds', rainMm: 0, windKmh: 18 };
 
   let crowdLevel = null;
-  if (dham && crowdMap[dham]) {
-    crowdLevel = normLevel(crowdMap[dham].level);
+  if (dham) {
+    crowdLevel = crowdLevelForDhamOnDate(crowdMap, dham, row.date);
   }
 
   let warning = null;
   let tip = null;
 
-  if (w.condition === 'Thunderstorm' || (w.rainMm ?? 0) > 20) {
+  const rainMm = w.rainMm ?? 0;
+  const liveWx = w._source === 'openweather';
+  if (w.condition === 'Thunderstorm' || (liveWx && rainMm > 35)) {
     warning =
       'Heavy rain/thunderstorm forecast. Carry waterproof gear. Check road status before departing.';
     if (dham === 'Kedarnath') warning += ' Trek routes may be slippery — extra caution.';
-    alerts.push(`Severe weather risk on ${row.date} near ${dham || 'hills'}.`);
+    if (dham) {
+      alerts.push(`Severe weather risk on ${row.date} near ${dham}.`);
+    }
+  } else if (rainMm > 20 && dham) {
+    tip = (tip ? `${tip} ` : '') + 'Rain possible — carry a light raincoat.';
   }
   if (w.condition === 'Snow' && (dham === 'Kedarnath' || dham === 'Yamunotri')) {
     warning =
@@ -300,10 +319,20 @@ function enrichDayRow(
       'Parking: Sonprayag for Kedarnath; Badrinath has main parking near bus stand.';
   }
 
-  let cost = row.estimatedCost ?? dailyBaseCost('midrange');
-  if (dham === 'Kedarnath') {
-    if (kedarnathMode === 'helicopter') cost += 12000 / Math.max(1, paceKey === 'express' ? 7 : paceKey === 'relaxed' ? 13 : 10);
-    else if (kedarnathMode === 'pony') cost += 2500 / Math.max(1, paceKey === 'express' ? 7 : 10);
+  let cost = row.estimatedCost ?? estimateDayCost('dham_visit', accTier(accommodation));
+  if (dham === 'Kedarnath' && !row._extrasApplied) {
+    const eventText = (row.events || [])
+      .map((e) => `${e.title} ${e.note}`)
+      .join(' ');
+    const isHeliDay =
+      kedarnathMode === 'helicopter' && /helicopter|heli/i.test(eventText);
+    const isTrekDay =
+      kedarnathMode === 'pony' && /trek|pony|gaurikund/i.test(eventText);
+    if (isHeliDay) {
+      cost += KEDARNATH_HELI_ONE_WAY_INR;
+    } else if (isTrekDay) {
+      cost += KEDARNATH_PONY_ONE_WAY_INR;
+    }
   }
 
   return {
@@ -355,10 +384,11 @@ export function buildSingleDhamPlan(
   const pace = requestBody.pace || 'moderate';
   const n = singleTripDays(k, pace);
   const { mode: kedMode, healthWarnings } = resolveKedarnathTravel(userProfile, requestBody);
+  const tier = accTier(requestBody.accommodation);
   const alerts = [];
   const rows = [];
 
-  const push = (i, title, location, dham, events, est, dhamNotes) => {
+  const push = (i, title, location, dham, events, est, dhamNotes, extra = {}) => {
     rows.push({
       day: i + 1,
       date: addDaysStr(startDate, i),
@@ -368,30 +398,36 @@ export function buildSingleDhamPlan(
       events,
       estimatedCost: est,
       dhamNotes,
+      ...extra,
     });
   };
 
   if (k === 'yamunotri') {
-    push(0, 'Journey to Yamunotri base', 'Dehradun / Haridwar → Barkot', null, [{ time: '10:00', title: 'Road journey', note: 'Acclimatisation' }], dailyBaseCost(requestBody.accommodation));
-    push(1, 'Trek day — Yamunotri Dham', 'Janki Chatti → Yamunotri', 'Yamunotri', [{ time: '05:00', title: 'Pre-dawn trek', note: `${info.darshaTiming} · pony optional` }, { time: '12:00', title: 'Darshan & Surya Kund', note: 'Hot spring near temple' }], dailyBaseCost(requestBody.accommodation), 'Trek ~6km / ~3h one way from Janki Chatti');
-    push(2, 'Return / rest', 'Barkot / Janki Chatti', null, [{ time: '09:00', title: 'Rest or Kharsali village', note: 'Less crowded alternative' }], dailyBaseCost(requestBody.accommodation) * 0.85);
+    push(0, 'Journey to Yamunotri base', 'Dehradun / Haridwar → Barkot', null, [{ time: '10:00', title: 'Road journey', note: 'Acclimatisation' }], estimateDayCost('road_transfer', tier));
+    push(1, 'Trek day — Yamunotri Dham', 'Janki Chatti → Yamunotri', 'Yamunotri', [{ time: '05:00', title: 'Pre-dawn trek', note: `${info.darshaTiming} · pony optional` }, { time: '12:00', title: 'Darshan & Surya Kund', note: 'Hot spring near temple' }], estimateDayCost('dham_visit', tier), 'Trek ~6km / ~3h one way from Janki Chatti');
+    push(2, 'Return / rest', 'Barkot / Janki Chatti', null, [{ time: '09:00', title: 'Rest or Kharsali village', note: 'Less crowded alternative' }], estimateDayCost('return', tier));
   } else if (k === 'gangotri') {
-    push(0, 'Journey to Gangotri sector', 'Uttarkashi', null, [{ time: '12:00', title: 'Road via Uttarkashi', note: `Mandatory night halt: ${info.mandatoryStopover}` }], dailyBaseCost(requestBody.accommodation));
-    push(1, 'Gangotri Dham', 'Gangotri town', 'Gangotri', [{ time: '05:30', title: 'Aarti', note: info.darshaTiming }, { time: '09:00', title: 'Bhagirathi Shila', note: 'Short walk from temple' }], dailyBaseCost(requestBody.accommodation));
-    push(2, 'Buffer / return', 'Uttarkashi', null, [{ time: '10:00', title: 'Rest day', note: '' }], dailyBaseCost(requestBody.accommodation) * 0.9);
+    push(0, 'Journey to Gangotri sector', 'Uttarkashi', null, [{ time: '12:00', title: 'Road via Uttarkashi', note: `Mandatory night halt: ${info.mandatoryStopover}` }], estimateDayCost('road_transfer', tier));
+    push(1, 'Gangotri Dham', 'Gangotri town', 'Gangotri', [{ time: '05:30', title: 'Aarti', note: info.darshaTiming }, { time: '09:00', title: 'Bhagirathi Shila', note: 'Short walk from temple' }], estimateDayCost('dham_visit', tier));
+    push(2, 'Buffer / return', 'Uttarkashi', null, [{ time: '10:00', title: 'Rest day', note: '' }], estimateDayCost('buffer', tier));
   } else if (k === 'kedarnath') {
-    push(0, 'Journey to Kedarnath base', 'Guptkashi / Rudraprayag', null, [{ time: '14:00', title: 'Check-in', note: info.mandatoryStopover }], dailyBaseCost(requestBody.accommodation));
-    push(1, 'Sonprayag → Gaurikund', 'Sonprayag', 'Kedarnath', [{ time: '07:00', title: 'Park & shared jeep', note: 'Park at Sonprayag. Private vehicles NOT allowed beyond Sonprayag to Gaurikund.' }], dailyBaseCost(requestBody.accommodation), 'Sonprayag mandatory parking');
+    push(0, 'Journey to Kedarnath base', 'Guptkashi / Rudraprayag', null, [{ time: '14:00', title: 'Check-in', note: info.mandatoryStopover }], estimateDayCost('base_night', tier));
+    push(1, 'Sonprayag → Gaurikund', 'Sonprayag', 'Kedarnath', [{ time: '07:00', title: 'Park & shared jeep', note: 'Park at Sonprayag. Private vehicles NOT allowed beyond Sonprayag to Gaurikund.' }], estimateDayCost('base_night', tier), 'Sonprayag mandatory parking');
     const ascent =
       kedMode === 'helicopter'
-        ? [{ time: '06:00', title: 'Helicopter from Phata/Sersi', note: `Approx ₹${DHAM_INFO.kedarnath.helicopterPrice} per person` }]
+        ? [{ time: '06:00', title: 'Helicopter from Phata/Sersi', note: `Approx ₹${KEDARNATH_HELI_ONE_WAY_INR} per person one-way` }]
         : [{ time: '06:00', title: 'Trek start Gaurikund', note: '16km · ~6h · carry water' }];
-    push(2, 'Kedarnath darshan', 'Kedarnath shrine', 'Kedarnath', [...ascent, { time: '15:00', title: 'Bhairavnath / buffer', note: 'Gandhi Sarovar if time & fitness allow' }], dailyBaseCost(requestBody.accommodation) * 1.15, kedMode === 'helicopter' ? 'Helipad: Phata / Sersi / Guptkashi' : null);
-    push(3, 'Descent & recovery', 'Gaurikund / Guptkashi', 'Kedarnath', [{ time: '08:00', title: 'Descent / rest', note: 'Hydration' }], dailyBaseCost(requestBody.accommodation) * 0.9);
+    const kedDayCost = estimateDayCost(
+      kedMode === 'helicopter' ? 'kedarnath_heli_base' : 'kedarnath_trek',
+      tier,
+      { helicopterSurcharge: kedMode === 'helicopter', ponySurcharge: kedMode === 'pony' },
+    );
+    push(2, 'Kedarnath darshan', 'Kedarnath shrine', 'Kedarnath', [...ascent, { time: '15:00', title: 'Bhairavnath / buffer', note: 'Gandhi Sarovar if time & fitness allow' }], kedDayCost, kedMode === 'helicopter' ? 'Helipad: Phata / Sersi / Guptkashi' : null, { _extrasApplied: true });
+    push(3, 'Descent & recovery', 'Gaurikund / Guptkashi', 'Kedarnath', [{ time: '08:00', title: 'Descent / rest', note: 'Hydration' }], estimateDayCost('road_transfer', tier));
   } else {
-    push(0, 'Journey to Joshimath', 'Joshimath', null, [{ time: '15:00', title: 'Road from Rishikesh', note: `Mandatory halt: ${info.mandatoryStopover}` }], dailyBaseCost(requestBody.accommodation));
-    push(1, 'Badrinath darshan', 'Badrinath town', 'Badrinath', [{ time: '04:30', title: 'Tapt Kund holy dip', note: 'Before darshan as per tradition' }, { time: '06:00', title: 'Temple darshan', note: info.darshaTiming }], dailyBaseCost(requestBody.accommodation), 'Brahma Muhurta abhishek ~04:30');
-    push(2, 'Mana / Vyas Gufa (optional)', 'Mana', 'Badrinath', [{ time: '09:00', title: 'Side visit', note: requestBody.sideTrips ? 'Mana, Vyas Gufa' : 'Rest' }], dailyBaseCost(requestBody.accommodation) * 0.85);
+    push(0, 'Journey to Joshimath', 'Joshimath', null, [{ time: '15:00', title: 'Road from Rishikesh', note: `Mandatory halt: ${info.mandatoryStopover}` }], estimateDayCost('road_transfer', tier));
+    push(1, 'Badrinath darshan', 'Badrinath town', 'Badrinath', [{ time: '04:30', title: 'Tapt Kund holy dip', note: 'Before darshan as per tradition' }, { time: '06:00', title: 'Temple darshan', note: info.darshaTiming }], estimateDayCost('dham_visit', tier), 'Brahma Muhurta abhishek ~04:30');
+    push(2, 'Mana / Vyas Gufa (optional)', 'Mana', 'Badrinath', [{ time: '09:00', title: 'Side visit', note: requestBody.sideTrips ? 'Mana, Vyas Gufa' : 'Rest' }], estimateDayCost('side_trip', tier));
   }
 
   const crowdDisp = crowdKeyToDisplay(k);
@@ -419,16 +455,19 @@ export function buildSingleDhamPlan(
       userProfile.age ?? 40,
       requestBody.groupSize || 1,
       userProfile.vehicle,
+      requestBody.accommodation || 'midrange',
     ),
   );
 
   let totalCostPerPerson = days.reduce((s, d) => s + (d.estimatedCost || 0), 0);
   const budgetCap = Number(requestBody.budget) || 500000;
   if (budgetCap > 0 && totalCostPerPerson > budgetCap) {
-    alerts.push('Estimated spend may exceed budget — review accommodation tier.');
+    alerts.push(
+      `Estimated on-trip spend (₹${totalCostPerPerson.toLocaleString('en-IN')}) is above your budget (₹${budgetCap.toLocaleString('en-IN')}). Excludes long-distance travel to Haridwar.`,
+    );
   }
 
-  const summary = `${userProfile.name || 'Pilgrim'}, your ${n}-day ${info.displayName} plan (${pace}). ${crowdInsight.tip || crowdInsight.warning || ''}`;
+  const summary = `${userProfile.name || 'Pilgrim'}, your ${n}-day ${info.displayName} plan (${pace}). Indicative on-route cost ~₹${totalCostPerPerson.toLocaleString('en-IN')} per person. ${crowdInsight.tip || crowdInsight.warning || ''}`;
 
   return {
     mode: 'single',
@@ -458,39 +497,161 @@ export function buildAll4DhamPlan(
   const totalDays = computeTotalDays(pace, sideTrips);
   const { order, alerts } = computeDhamOrder(crowdMap);
   const { mode: kedMode, healthWarnings } = resolveKedarnathTravel(userProfile, requestBody);
+  const tier = accTier(requestBody.accommodation);
 
   const skeleton = [];
-  const push = (title, location, dham, events, est, dhamNotes) => {
-    skeleton.push({ title, location, dham, events, estimatedCost: est, dhamNotes });
+  const push = (title, location, dham, events, est, dhamNotes, extra = {}) => {
+    skeleton.push({
+      title,
+      location,
+      dham,
+      events,
+      estimatedCost: est,
+      dhamNotes,
+      ...extra,
+    });
   };
 
-  push('Haridwar / Rishikesh arrival', 'Haridwar', null, [{ time: '14:00', title: 'Check-in', note: 'Evening Ganga aarti' }], dailyBaseCost(requestBody.accommodation));
-  push('Drive to Janki Chatti (Yamunotri base)', 'Barkot / Janki Chatti', null, [{ time: '07:00', title: 'Road journey', note: 'Acclimatisation' }], dailyBaseCost(requestBody.accommodation));
-  push('Yamunotri darshan + nearby', 'Yamunotri', 'Yamunotri', [{ time: '05:00', title: 'Trek / pony', note: DHAM_INFO.yamunotri.darshaTiming }, { time: '14:00', title: 'Surya Kund', note: 'If crowd low' }], dailyBaseCost(requestBody.accommodation));
-  push('Drive to Uttarkashi', 'Uttarkashi', null, [{ time: '08:00', title: 'Scenic drive', note: DHAM_INFO.gangotri.mandatoryStopover }], dailyBaseCost(requestBody.accommodation));
-  push('Gangotri darshan', 'Gangotri', 'Gangotri', [{ time: '05:30', title: 'Aarti', note: 'Bhagirathi Shila' }], dailyBaseCost(requestBody.accommodation));
+  push(
+    'Haridwar / Rishikesh arrival',
+    'Haridwar',
+    null,
+    [{ time: '14:00', title: 'Check-in', note: 'Evening Ganga aarti (free)' }],
+    estimateDayCost('arrival_lite', tier),
+  );
+  push(
+    'Drive to Janki Chatti (Yamunotri base)',
+    'Barkot / Janki Chatti',
+    null,
+    [{ time: '07:00', title: 'Road journey', note: 'Acclimatisation' }],
+    estimateDayCost('road_transfer', tier),
+  );
+  push(
+    'Yamunotri darshan + nearby',
+    'Yamunotri',
+    'Yamunotri',
+    [
+      { time: '05:00', title: 'Trek / pony', note: DHAM_INFO.yamunotri.darshaTiming },
+      { time: '14:00', title: 'Surya Kund', note: 'If crowd low' },
+    ],
+    estimateDayCost('dham_visit', tier),
+  );
+  push(
+    'Drive to Uttarkashi',
+    'Uttarkashi',
+    null,
+    [{ time: '08:00', title: 'Scenic drive', note: DHAM_INFO.gangotri.mandatoryStopover }],
+    estimateDayCost('road_transfer', tier),
+  );
+  push(
+    'Gangotri darshan',
+    'Gangotri',
+    'Gangotri',
+    [{ time: '05:30', title: 'Aarti', note: 'Bhagirathi Shila' }],
+    estimateDayCost('dham_visit', tier),
+  );
   if (sideTrips && pace === 'relaxed') {
-    push('Gaumukh day trek (optional)', 'Gangotri → Gaumukh', 'Gangotri', [{ time: '05:00', title: 'Permit & trek', note: 'For active fitness only' }], dailyBaseCost(requestBody.accommodation) * 1.2);
+    push(
+      'Gaumukh day trek (optional)',
+      'Gangotri → Gaumukh',
+      'Gangotri',
+      [{ time: '05:00', title: 'Permit & trek', note: 'For active fitness only' }],
+      estimateDayCost('side_trip', tier),
+    );
   }
-  push('Drive to Guptkashi / Rudraprayag', 'Guptkashi', null, [{ time: '07:00', title: 'Mountain road', note: 'Rest evening' }], dailyBaseCost(requestBody.accommodation));
-  push('Sonprayag / Gaurikund', 'Sonprayag', 'Kedarnath', [{ time: '08:00', title: 'Parking & shared jeep', note: 'Park at Sonprayag. Private vehicles NOT allowed beyond Sonprayag to Gaurikund.' }], dailyBaseCost(requestBody.accommodation), 'Mandatory Sonprayag parking');
+  push(
+    'Drive to Guptkashi / Rudraprayag',
+    'Guptkashi',
+    null,
+    [{ time: '07:00', title: 'Mountain road', note: 'Rest evening' }],
+    estimateDayCost('road_transfer', tier),
+  );
+  push(
+    'Sonprayag / Gaurikund',
+    'Sonprayag',
+    'Kedarnath',
+    [
+      {
+        time: '08:00',
+        title: 'Parking & shared jeep',
+        note: 'Park at Sonprayag. Private vehicles NOT allowed beyond Sonprayag to Gaurikund.',
+      },
+    ],
+    estimateDayCost('base_night', tier),
+    'Mandatory Sonprayag parking',
+  );
   const kedEvents =
     kedMode === 'helicopter'
       ? [{ time: '06:00', title: 'Helicopter', note: 'Phata / Sersi helipad' }]
       : [{ time: '06:00', title: 'Trek from Gaurikund', note: '16km · ~6h' }];
-  push('Kedarnath ascent & darshan', 'Kedarnath', 'Kedarnath', [...kedEvents, { time: '16:00', title: 'Descent buffer', note: 'Gandhi Sarovar if time' }], dailyBaseCost(requestBody.accommodation) * 1.1);
-  push('Descent & drive towards Joshimath', 'Joshimath', null, [{ time: '09:00', title: 'Road', note: 'Acclimatisation' }], dailyBaseCost(requestBody.accommodation));
+  const kedCost = estimateDayCost(
+    kedMode === 'helicopter' ? 'kedarnath_heli_base' : 'kedarnath_trek',
+    tier,
+    {
+      helicopterSurcharge: kedMode === 'helicopter',
+      ponySurcharge: kedMode === 'pony',
+    },
+  );
+  push(
+    'Kedarnath ascent & darshan',
+    'Kedarnath',
+    'Kedarnath',
+    [...kedEvents, { time: '16:00', title: 'Descent buffer', note: 'Gandhi Sarovar if time' }],
+    kedCost,
+    null,
+    { _extrasApplied: true },
+  );
+  push(
+    'Descent & drive towards Joshimath',
+    'Joshimath',
+    null,
+    [{ time: '09:00', title: 'Road', note: 'Acclimatisation' }],
+    estimateDayCost('road_transfer', tier),
+  );
   if (pace === 'relaxed') {
-    push('Joshimath + Auli buffer', 'Joshimath', null, [{ time: '10:00', title: 'Rest / cable car', note: '' }], dailyBaseCost(requestBody.accommodation) * 0.95);
+    push(
+      'Joshimath + Auli buffer',
+      'Joshimath',
+      null,
+      [{ time: '10:00', title: 'Rest / cable car', note: '' }],
+      estimateDayCost('buffer', tier),
+    );
   }
-  push('Badrinath darshan', 'Badrinath', 'Badrinath', [{ time: '04:30', title: 'Tapt Kund dip', note: 'Before darshan' }, { time: '06:00', title: 'Abhishek darshan', note: DHAM_INFO.badrinath.darshaTiming }], dailyBaseCost(requestBody.accommodation));
+  push(
+    'Badrinath darshan',
+    'Badrinath',
+    'Badrinath',
+    [
+      { time: '04:30', title: 'Tapt Kund dip', note: 'Before darshan' },
+      { time: '06:00', title: 'Abhishek darshan', note: DHAM_INFO.badrinath.darshaTiming },
+    ],
+    estimateDayCost('dham_visit', tier),
+  );
   if (sideTrips) {
-    push('Mana · Vyas Gufa', 'Mana', 'Badrinath', [{ time: '09:00', title: 'Side trip', note: 'Last Indian village' }], dailyBaseCost(requestBody.accommodation) * 0.6);
+    push(
+      'Mana · Vyas Gufa',
+      'Mana',
+      'Badrinath',
+      [{ time: '09:00', title: 'Side trip', note: 'Last Indian village' }],
+      estimateDayCost('side_trip', tier),
+    );
     if (pace === 'relaxed') {
-      push('Valley of Flowers / Hemkund window', 'Gobindghat', null, [{ time: '05:00', title: 'Optional trek', note: 'July–Aug bloom' }], dailyBaseCost(requestBody.accommodation) * 0.7);
+      push(
+        'Valley of Flowers / Hemkund window',
+        'Gobindghat',
+        null,
+        [{ time: '05:00', title: 'Optional trek', note: 'July–Aug bloom' }],
+        estimateDayCost('side_trip', tier),
+      );
     }
   }
-  push('Return journey', 'Haridwar / Delhi', null, [{ time: '08:00', title: 'Departure', note: '' }], dailyBaseCost(requestBody.accommodation) * 0.75);
+  push(
+    'Return journey',
+    'Haridwar / Delhi',
+    null,
+    [{ time: '08:00', title: 'Departure', note: '' }],
+    estimateDayCost('return', tier),
+  );
 
   while (skeleton.length < totalDays) {
     skeleton.splice(skeleton.length - 1, 0, {
@@ -498,7 +659,7 @@ export function buildAll4DhamPlan(
       location: 'Uttarakhand',
       dham: null,
       events: [{ time: '10:00', title: 'Flexible', note: 'Adjust pace' }],
-      estimatedCost: dailyBaseCost(requestBody.accommodation) * 0.85,
+      estimatedCost: estimateDayCost('buffer', tier),
     });
   }
   while (skeleton.length > totalDays) {
@@ -519,6 +680,7 @@ export function buildAll4DhamPlan(
       userProfile.age ?? 40,
       requestBody.groupSize || 1,
       userProfile.vehicle,
+      requestBody.accommodation || 'midrange',
     ),
   );
 
@@ -530,23 +692,15 @@ export function buildAll4DhamPlan(
   }
 
   let totalCostPerPerson = days.reduce((s, d) => s + (d.estimatedCost || 0), 0);
-  const accTier = requestBody.accommodation || 'midrange';
-  const ratioMid = dailyBaseCost('midrange');
-  const ratioTarget = dailyBaseCost(accTier);
-  const costScale = ratioMid > 0 ? ratioTarget / ratioMid : 1;
-  for (const d of days) {
-    d.estimatedCost = Math.round((d.estimatedCost || 0) * costScale);
-  }
-  totalCostPerPerson = days.reduce((s, d) => s + (d.estimatedCost || 0), 0);
 
   const budgetCap = Number(requestBody.budget) || 500000;
   if (budgetCap > 0 && totalCostPerPerson > budgetCap) {
     alerts.push(
-      `Estimated spend (₹${totalCostPerPerson.toLocaleString('en-IN')}) may exceed budget (₹${budgetCap.toLocaleString('en-IN')}).`,
+      `Estimated on-trip spend (₹${totalCostPerPerson.toLocaleString('en-IN')}) is above your budget (₹${budgetCap.toLocaleString('en-IN')}). Excludes Delhi↔Haridwar travel. Consider budget stays or fewer side trips.`,
     );
   }
 
-  const summary = `${userProfile.name || 'Pilgrim'}, your ${totalDays}-day Char Dham plan (${pace}) follows ${order.join(' → ')}. Includes Kedarnath travel: ${kedMode}.`;
+  const summary = `${userProfile.name || 'Pilgrim'}, your ${totalDays}-day Char Dham plan (${pace}) follows ${order.join(' → ')}. Includes Kedarnath travel: ${kedMode}. Indicative on-route cost ~₹${totalCostPerPerson.toLocaleString('en-IN')} per person.`;
 
   return {
     mode: 'all4',

@@ -4,7 +4,8 @@ import axios from 'axios';
 const PROVIDER_CONFIGS = {
   groq: {
     baseUrl: 'https://api.groq.com/openai/v1',
-    defaultModel: 'openai/gpt-oss-20b',
+    /** Tool-calling friendly; see https://console.groq.com/docs/models */
+    defaultModel: 'llama-3.3-70b-versatile',
   },
   openai: {
     baseUrl: 'https://api.openai.com/v1',

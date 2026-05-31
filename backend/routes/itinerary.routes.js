@@ -4,16 +4,13 @@ import { body, validationResult } from 'express-validator';
 import { authenticate } from '../middleware/auth.middleware.js';
 import User from '../models/User.model.js';
 import Itinerary from '../models/Itinerary.model.js';
-import { fetchWeatherMapForDhams } from '../services/weatherService.js';
-import { fetchCrowdMap } from '../services/crowdService.js';
+import { sanitizePilgrimAlerts } from '../utils/pilgrimAlerts.js';
+import { validateDhamDates } from '../services/decisionTree.js';
 import {
-  generateItinerary,
-  validateDhamDates,
-} from '../services/decisionTree.js';
-import {
-  buildFacilitiesPerDham,
-  attachCrowdLevels,
-} from '../services/itineraryFacilities.js';
+  buildDynamicItinerary,
+  normalizePlannerInput,
+} from '../services/dynamicItineraryEngine.js';
+import { buildFacilitiesPerDham } from '../services/itineraryFacilities.js';
 import {
   DHAM_INFO,
   DHAM_KEYS,
@@ -103,22 +100,32 @@ function uniqueDhamsFromPlan(result) {
   return [...set];
 }
 
-async function fetchMlBatchForTrip(body, uniqueDhams, dayDates) {
+async function fetchMlBatchForTrip(body, uniqueDhams, dayDates, weatherMap = {}) {
   const dates = [...new Set(dayDates)].slice(0, 14);
   if (!dates.length) return {};
   const out = {};
+  const displayNames = {
+    yamunotri: 'Yamunotri',
+    gangotri: 'Gangotri',
+    kedarnath: 'Kedarnath',
+    badrinath: 'Badrinath',
+  };
   await Promise.allSettled(
     uniqueDhams.map(async (dham) => {
       try {
+        const disp = displayNames[dham] || dham;
         const { data } = await axios.post(
           `${ML_BASE}/predict-batch`,
           {
-            requests: dates.map((date) => ({
-              dham,
-              date,
-              weather_code: 0,
-              pass_quota_pct: 0.5,
-            })),
+            requests: dates.map((date) => {
+              const w = weatherMap[disp]?.[date];
+              return {
+                dham,
+                date,
+                weather_code: w?.weatherCode ?? 0,
+                pass_quota_pct: 0.5,
+              };
+            }),
           },
           { timeout: 12000 },
         );
@@ -189,11 +196,17 @@ router.post(
   [
     body('groupSize').isInt({ min: 1, max: 50 }),
     body('startDate').matches(/^\d{4}-\d{2}-\d{2}$/),
-    body('budget').isFloat({ min: 1000, max: 5000000 }),
-    body('pace').isIn(['relaxed', 'moderate', 'express']),
-    body('accommodation').isIn(['budget', 'midrange', 'premium']),
-    body('travelMode').isIn(['road', 'helicopter', 'mixed']),
-    body('sideTrips').isBoolean(),
+    body('numberOfDays').optional().isInt({ min: 2, max: 21 }),
+    body('budgetTier').optional().isIn(['budget', 'moderate', 'premium']),
+    body('interests').optional().isArray(),
+    body('specialNeeds').optional().isArray(),
+    body('budget').optional().isFloat({ min: 1000, max: 5000000 }),
+    body('pace').optional().isIn(['relaxed', 'moderate', 'express']),
+    body('accommodation').optional().isIn(['budget', 'midrange', 'premium']),
+    body('travelMode')
+      .optional()
+      .isIn(['road', 'helicopter', 'mixed', 'trek']),
+    body('sideTrips').optional().isBoolean(),
     body('diet').optional().isIn(['vegetarian', 'sattvic', 'any']),
     body('kedarnathTravel')
       .optional()
@@ -204,6 +217,7 @@ router.post(
     body('vehicleType')
       .optional()
       .isIn(['none', 'bike', 'car', 'suv', 'bus']),
+    body('shuffleSeed').optional().isInt(),
   ],
   async (req, res) => {
     try {
@@ -281,49 +295,68 @@ router.post(
         vehicleType: body.vehicleType || 'none',
       };
 
-      let weatherMap = {};
-      let crowdMap = {};
-      const allAlerts = [];
-
-      const settled = await Promise.allSettled([
-        fetchWeatherMapForDhams(body.startDate),
-        fetchCrowdMap(body.startDate),
-      ]);
-
-      if (settled[0].status === 'fulfilled') {
-        weatherMap = settled[0].value.weatherMap;
-        allAlerts.push(...settled[0].value.alerts);
-      } else {
-        allAlerts.push('Live weather partially unavailable — using seasonal defaults.');
-      }
-      if (settled[1].status === 'fulfilled') {
-        crowdMap = settled[1].value.crowdMap;
-        allAlerts.push(...settled[1].value.alerts);
-      } else {
-        allAlerts.push('Crowd levels estimated from defaults.');
+      const plannerInput = normalizePlannerInput({
+        ...bodyForTree,
+        selectedDhams,
+      });
+      if (userProfile.healthConditions?.length) {
+        plannerInput.specialNeeds = [
+          ...new Set([
+            ...plannerInput.specialNeeds,
+            ...(userProfile.age >= 60 ? ['seniors'] : []),
+            ...(userProfile.healthConditions.some((h) => h !== 'none')
+              ? ['medical']
+              : []),
+          ]),
+        ];
       }
 
       let result;
       try {
-        result = generateItinerary(userProfile, bodyForTree, weatherMap, crowdMap);
+        result = await buildDynamicItinerary(plannerInput, {
+          userProfile,
+          shuffleSeed: body.shuffleSeed || 0,
+        });
       } catch (e) {
-        console.error('Decision tree error:', e);
+        console.error('Dynamic planner error:', e);
         return res.status(500).json({
           message: 'Itinerary generation failed',
           error: process.env.NODE_ENV === 'development' ? e.message : undefined,
         });
       }
 
+      const allAlerts = [...(result.alerts || [])];
+      const dataQuality = result.dataQuality;
+
       const dayDates = (result.days || []).map((d) => d.date);
       const uDhams = uniqueDhamsFromPlan(result);
+      const accTier =
+        plannerInput.budgetTier === 'budget'
+          ? 'budget'
+          : plannerInput.budgetTier === 'premium'
+            ? 'premium'
+            : 'midrange';
+
       const mlSettled = await Promise.allSettled([
-        fetchMlBatchForTrip(body, uDhams, dayDates),
-        buildFacilitiesPerDham(uDhams, body.accommodation, body.vehicleType || 'none'),
+        fetchMlBatchForTrip(body, uDhams, dayDates, {}),
+        buildFacilitiesPerDham(uDhams, accTier, body.vehicleType || 'none'),
       ]);
 
       let facilitiesPerDham = {};
       if (mlSettled[1].status === 'fulfilled') {
-        facilitiesPerDham = attachCrowdLevels(mlSettled[1].value, crowdMap);
+        facilitiesPerDham = mlSettled[1].value;
+        for (const k of uDhams) {
+          const disp = DHAM_INFO[k]?.displayName;
+          const busy = (result.days || []).find(
+            (d) => d.dhamKey === k && d.crowdLevel === 'High',
+          );
+          if (facilitiesPerDham[k]) {
+            facilitiesPerDham[k].crowdLevel = busy
+              ? 'High'
+              : (result.days || []).find((d) => d.dhamKey === k)?.crowdLevel ||
+                'Medium';
+          }
+        }
       }
       const mlForecasts = mlSettled[0].status === 'fulfilled' ? mlSettled[0].value : {};
 
@@ -335,7 +368,9 @@ router.post(
         facilitiesPerDham[k].alternatives = ins?.alternatives || [];
       }
 
-      result.alerts = [...new Set([...(result.alerts || []), ...allAlerts])];
+      result.alerts = sanitizePilgrimAlerts([
+        ...new Set([...(result.alerts || []), ...allAlerts]),
+      ]);
       if (seasonDateWarnings.length) {
         result.alerts = [...new Set([...result.alerts, ...seasonDateWarnings])];
       }
@@ -354,6 +389,7 @@ router.post(
         facilitiesPerDham,
         mlForecasts,
         closedDhamWarnings,
+        dataQuality,
       };
 
       const { insightsByDham, kedarnathMode, dhamOrder, ...toSave } = responsePayload;
@@ -368,12 +404,10 @@ router.post(
           $set: {
             userId: user._id,
             pilgrimId: user.pilgrimId,
-            inputParams: bodyForTree,
-            weatherSnapshot: weatherMap,
-            crowdSnapshot: crowdMap,
+            inputParams: { ...bodyForTree, ...plannerInput },
             result: resultClean,
             generatedAt: new Date(),
-            version: 2,
+            version: 3,
           },
         },
         { upsert: true, new: true },
@@ -390,6 +424,49 @@ router.post(
         message: 'Failed to generate itinerary',
         error: error.message,
       });
+    }
+  },
+);
+
+router.post(
+  '/regenerate',
+  authenticate,
+  [body('shuffleSeed').optional().isInt()],
+  async (req, res) => {
+    try {
+      const user = await User.findById(req.user._id).select('pilgrimId');
+      if (!user?.pilgrimId) {
+        return res.status(404).json({ message: 'No saved itinerary.' });
+      }
+      const doc = await Itinerary.findOne({ pilgrimId: user.pilgrimId }).sort({
+        generatedAt: -1,
+      });
+      if (!doc?.inputParams) {
+        return res.status(404).json({ message: 'No saved itinerary.' });
+      }
+      const seed =
+        req.body.shuffleSeed ??
+        Math.floor(Math.random() * 100000);
+      const plannerInput = normalizePlannerInput({
+        ...doc.inputParams,
+        shuffleSeed: seed,
+      });
+      const result = await buildDynamicItinerary(plannerInput, { shuffleSeed: seed });
+      const { insightsByDham, ...toSave } = result;
+      await Itinerary.findOneAndUpdate(
+        { pilgrimId: user.pilgrimId },
+        {
+          $set: {
+            result: { ...toSave, _meta: { insightsByDham } },
+            generatedAt: new Date(),
+            version: 3,
+          },
+        },
+      );
+      res.json({ ...result, shuffleSeed: seed, saved: true });
+    } catch (e) {
+      console.error('Regenerate error:', e);
+      res.status(500).json({ message: e.message });
     }
   },
 );

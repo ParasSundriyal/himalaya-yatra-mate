@@ -497,6 +497,81 @@ router.get('/my-bookings', authenticate, async (req, res) => {
   }
 });
 
+// @route   POST /api/parking/scan/:bookingId
+// @desc    Admin scans parking QR at entry — starts pilgrim pass timer
+// @access  Private (Admin)
+router.post('/scan/:bookingId', authenticate, authorize(['admin']), async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+      return res.status(400).json({ success: false, message: 'Invalid booking id' });
+    }
+
+    const booking = await Booking.findOne({
+      _id: bookingId,
+      bookingType: 'parking',
+      status: { $in: ['confirmed', 'pending'] },
+    }).populate('parking.areaId', 'name location');
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Parking booking not found' });
+    }
+
+    if (booking.parking?.scannedAt) {
+      return res.status(400).json({
+        success: false,
+        message: 'Pass already scanned at entry',
+        booking,
+      });
+    }
+
+    const now = new Date();
+    const plannedEntry = booking.parking?.entryTime
+      ? new Date(booking.parking.entryTime)
+      : now;
+    const plannedExit = booking.parking?.exitTime
+      ? new Date(booking.parking.exitTime)
+      : new Date(now.getTime() + 60 * 60 * 1000);
+    let durationMs = plannedExit.getTime() - plannedEntry.getTime();
+    if (!Number.isFinite(durationMs) || durationMs <= 0) {
+      durationMs = 60 * 60 * 1000;
+    }
+
+    // Allow scan until planned window ends (late arrival still gets full duration from scan)
+    if (now > plannedExit) {
+      return res.status(400).json({ success: false, message: 'Parking pass has expired' });
+    }
+
+    booking.parking.scannedAt = now;
+    booking.parking.scannedBy = req.user._id;
+    booking.parking.entryTime = now;
+    booking.parking.exitTime = new Date(now.getTime() + durationMs);
+    if (booking.status === 'pending') {
+      booking.status = 'confirmed';
+    }
+    await booking.save();
+
+    const parkingArea = await Parking.findById(booking.parking.areaId);
+    if (parkingArea && booking.parking.slotId) {
+      const slot = parkingArea.slots.id(booking.parking.slotId);
+      if (slot) {
+        slot.entryTime = now;
+        slot.exitTime = booking.parking.exitTime;
+        await parkingArea.save();
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Parking pass scanned — timer started for pilgrim',
+      booking,
+    });
+  } catch (error) {
+    console.error('Parking scan error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
 /**
  * @swagger
  * /api/parking/cancel/:bookingId:
